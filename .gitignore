@@ -1,0 +1,16 @@
+# Data directories
+data/flickr8k/
+data/flickr30k/
+data_output/
+model_outputs/
+visualizations/
+
+# Byte-compiled Python files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
