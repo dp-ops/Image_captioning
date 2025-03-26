@@ -174,8 +174,8 @@ def main():
         if epochs_since_improvement == 20:
             print("No improvement for 20 epochs. Stopping training.")
             break
-        if epochs_since_improvement > 0 and epochs_since_improvement % 10 == 0:
-            adjust_learning_rate(decoder_optimizer, 0.8)
+        if epochs_since_improvement > 0 and epochs_since_improvement % 5 == 0:
+            adjust_learning_rate(decoder_optimizer, 0.7)
             #if encoder is trained, adjust learning rate for encoder
             if fine_tune_encoder:
                 adjust_learning_rate(encoder_optimizer, 0.8)
