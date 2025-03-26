@@ -1,4 +1,4 @@
-# ResNet34-LSTM Image Captioning: Complete Documentation
+# ResNet LSTM Image Captioning
 
 This document provides a comprehensive guide to the ResNet34-LSTM image captioning model, including architecture details, training instructions, and troubleshooting tips.
 
@@ -220,10 +220,11 @@ You can customize the training with the following parameters:
 - `--batch_size`: Batch size for training (default: 64)
 - `--checkpoint`: Specific checkpoint to resume from
 - `--pretrained`: Use pretrained ResNet34 weights
+- `--one_hot`: Use one-hot-encoding on the word embeding of the captions (default: False)
 
 Example with custom parameters:
 ```bash
-python train.py --pretrained --fine_tune_encoder --epochs 50 --batch_size 32
+python train.py --pretrained --fine_tune_encoder --epochs 50 --batch_size 32 --one_hot
 ```
 
 ### Resuming Training
