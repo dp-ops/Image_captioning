@@ -14,3 +14,8 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# Visualization script and outputs
+visualize_model.py
+visualizations/
+*.png
