@@ -11,14 +11,14 @@ import math
 
 #Params
 data_folder = 'data_output' # files saved by create_input_files.py
-data_name = 'flickr30k_5_5'  # base name shared by data files
-checkpoint = 'model_outputs/BEST_flickr30k_5_5.pth.tar' # model checkpoint
-word_map = 'data_output/WORDMAP_flickr30k_5_5.json' # word map, ensure it's the same the data was encoded with and the model was trained with
+data_name = 'flickr8k_5_5'  # base name shared by data files
+checkpoint = 'model_outputs/BEST_flickr8k_5_5.pth.tar' # model checkpoint
+word_map = 'data_output/WORDMAP_flickr8k_5_5.json' # word map, ensure it's the same the data was encoded with and the model was trained with
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
 
 # Load model
-checkpoint = torch.load(checkpoint)
+checkpoint = torch.load(checkpoint, weights_only=False)
 decoder = checkpoint['decoder']
 decoder = decoder.to(device)
 decoder.eval()
@@ -92,7 +92,14 @@ def evaluate(beam_size):
         step = 1
 
         while True:
-            embeddings = decoder.embedding(k_prev_words).squeeze(1)
+            # Check if decoder uses one-hot encoding
+            if hasattr(decoder, 'use_one_hot') and decoder.use_one_hot:
+                # Convert indices to one-hot vectors before embedding
+                one_hot = decoder.one_hot_encoder(k_prev_words)
+                embeddings = decoder.embedding(one_hot.float()).squeeze(1)
+            else:
+                # Standard embedding lookup for indices
+                embeddings = decoder.embedding(k_prev_words).squeeze(1)
             
             # Use last layer's hidden state for attention
             awe, _ = decoder.attention(encoder_out, h_list[-1])

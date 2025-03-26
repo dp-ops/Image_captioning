@@ -143,7 +143,7 @@ def visualize_metrics(data_name='flickr8k_5_5'):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Visualize training metrics')
-    parser.add_argument('--data_name', default='flickr30k_5_5', help='dataset name')
+    parser.add_argument('--data_name', default='flickr8k_5_5', help='dataset name')
     args = parser.parse_args()
     
     visualize_metrics(args.data_name) 

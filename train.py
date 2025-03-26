@@ -25,7 +25,7 @@ parser.add_argument('--one_hot', '-o', action='store_true', help='use one-hot en
 args = parser.parse_args()
 
 data_folder = 'data_output'
-data_name = 'flickr30k_5_5' #change to flickr8k if using flickr8k dataset
+data_name = 'flickr8k_5_5' #change to flickr8k if using flickr8k dataset
 
 #Model params
 emb_dim = 512
