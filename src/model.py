@@ -154,11 +154,11 @@ class ResNet(nn.Module): #[3, 4, 6, 3]
         self.load_state_dict(state_dict, strict=False)
         print(f"Loaded pretrained weights from {weights_path}")
     
-def ResNet34(img_channel=3, num_classes=1000):
-    """
-    Creates a ResNet34 model with specified input channels and output classes
-    """
-    return ResNet(block, [3, 4, 6, 3], img_channel, num_classes)
+# def ResNet34(img_channel=3, num_classes=1000):
+#     """
+#     Creates a ResNet34 model with specified input channels and output classes
+#     """
+#     return ResNet(block, [3, 4, 6, 3], img_channel, num_classes)
 
 class EncoderCNN(nn.Module):
     """
@@ -453,37 +453,37 @@ class LSTMDecoderWithAttention(nn.Module):
 
         return predictions, encoded_captions, decode_lengths, alphas, sort_ind
 
-# Example of creating a complete image captioning model
-class ImageCaptioningModel(nn.Module):
-    """
-    Full image captioning model combining encoder and decoder
-    """
-    def __init__(self, encoder_dim=512, attention_dim=512, embed_dim=512, decoder_dim=512, 
-                 vocab_size=10000, encoded_image_size=14, pretrained_path=None, fine_tune_encoder=False):
-        super(ImageCaptioningModel, self).__init__()
+# # Example of creating a complete image captioning model
+# class ImageCaptioningModel(nn.Module):
+#     """
+#     Full image captioning model combining encoder and decoder
+#     """
+#     def __init__(self, encoder_dim=512, attention_dim=512, embed_dim=512, decoder_dim=512, 
+#                  vocab_size=10000, encoded_image_size=14, pretrained_path=None, fine_tune_encoder=False):
+#         super(ImageCaptioningModel, self).__init__()
         
-        # Initialize encoder and decoder
-        self.encoder = EncoderCNN(encoded_image_size=encoded_image_size, 
-                                  pretrained_path=pretrained_path, 
-                                  fine_tune=fine_tune_encoder)
+#         # Initialize encoder and decoder
+#         self.encoder = EncoderCNN(encoded_image_size=encoded_image_size, 
+#                                   pretrained_path=pretrained_path, 
+#                                   fine_tune=fine_tune_encoder)
         
-        self.decoder = LSTMDecoderWithAttention(attention_dim=attention_dim,
-                                               embed_dim=embed_dim,
-                                               decoder_dim=decoder_dim,
-                                               vocab_size=vocab_size,
-                                               encoder_dim=encoder_dim)
+#         self.decoder = LSTMDecoderWithAttention(attention_dim=attention_dim,
+#                                                embed_dim=embed_dim,
+#                                                decoder_dim=decoder_dim,
+#                                                vocab_size=vocab_size,
+#                                                encoder_dim=encoder_dim)
         
-    def forward(self, images, encoded_captions, caption_lengths):
-        """
-        Forward propagation through the full model
-        """
-        # Encode the images
-        encoder_out = self.encoder(images)
+#     def forward(self, images, encoded_captions, caption_lengths):
+#         """
+#         Forward propagation through the full model
+#         """
+#         # Encode the images
+#         encoder_out = self.encoder(images)
         
-        # Decode with attention
-        predictions, encoded_captions, decode_lengths, alphas, sort_ind = self.decoder(
-            encoder_out, encoded_captions, caption_lengths
-        )
+#         # Decode with attention
+#         predictions, encoded_captions, decode_lengths, alphas, sort_ind = self.decoder(
+#             encoder_out, encoded_captions, caption_lengths
+#         )
         
-        return predictions, alphas, encoded_captions, decode_lengths, sort_ind
+#         return predictions, alphas, encoded_captions, decode_lengths, sort_ind
 

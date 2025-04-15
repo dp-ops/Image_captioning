@@ -5,9 +5,9 @@ import torch.backends.cudnn as cudnn
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from model import EncoderCNN, LSTMDecoderWithAttention
-from dataset import CaptionDataset
-from utils import *
+from src.model import EncoderCNN, LSTMDecoderWithAttention
+from src.dataset import CaptionDataset
+from src.utils import *
 from nltk.translate.bleu_score import corpus_bleu
 import json
 from tqdm import tqdm

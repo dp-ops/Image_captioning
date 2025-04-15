@@ -5,9 +5,9 @@ from torch import optim, nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch.nn.utils.rnn import pack_padded_sequence
-from model import EncoderCNN, LSTMDecoderWithAttention
-from dataset import *
-from utils import *
+from src.model import EncoderCNN, LSTMDecoderWithAttention
+from src.dataset import *
+from src.utils import *
 from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 import argparse

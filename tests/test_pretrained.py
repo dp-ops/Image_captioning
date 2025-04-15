@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
-from model import EncoderCNN, LSTMDecoderWithAttention
+from src.model import EncoderCNN, LSTMDecoderWithAttention
 import time
 
 def test_pretrained_weights():

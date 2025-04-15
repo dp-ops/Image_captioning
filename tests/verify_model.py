@@ -14,7 +14,7 @@ import torch
 import shutil
 import json
 import matplotlib.pyplot as plt
-from model import EncoderCNN
+from src.model import EncoderCNN
 
 def verify_model():
     """Run a comprehensive verification of the image captioning model"""
