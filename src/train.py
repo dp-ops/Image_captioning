@@ -21,10 +21,11 @@ parser.add_argument('--epochs', '-e', default=120, type=int, help='number of epo
 parser.add_argument('--batch_size', '-b', default=64, type=int, help='batch size')
 parser.add_argument('--checkpoint', '-c', default=None, help='checkpoint to resume from')
 parser.add_argument('--pretrained', '-p', action='store_true', help='use pretrained ResNet34 weights from torchvision')
+parser.add_argument('--one_hot', '-o', action='store_true', help='use one-hot encoding for word embeddings')
 args = parser.parse_args()
 
 data_folder = 'data_output'
-data_name = 'flickr30k_5_5' #change to flickr8k if using flickr8k dataset
+data_name = 'flickr8k_5_5' #change to flickr8k if using flickr8k dataset
 
 #Model params
 emb_dim = 512
@@ -55,6 +56,7 @@ val_losses = []
 val_top5accs = []
 
 fine_tune_encoder = args.fine_tune_encoder
+use_one_hot = args.one_hot
 
 checkpoint = args.checkpoint
 
@@ -62,7 +64,7 @@ def main():
     '''Train and val'''
 
     global best_bleu4, epochs_since_improvement, checkpoint, start_epoch, fine_tune_encoder, data_name, word_map, bleu_scores
-    global train_losses, train_top5accs, val_losses, val_top5accs
+    global train_losses, train_top5accs, val_losses, val_top5accs, use_one_hot
 
     #Load word map
     word_map_file = os.path.join(data_folder, 'WORDMAP_' + data_name + '.json')
@@ -73,7 +75,8 @@ def main():
     if checkpoint is None and not args.resume:
         # Set the encoder dimension (512 for ResNet34)
         encoder_dim = 512
-        decoder = LSTMDecoderWithAttention(attention_dim, emb_dim, decoder_dim, len(word_map), encoder_dim, dropout, num_layers=3)
+        decoder = LSTMDecoderWithAttention(attention_dim, emb_dim, decoder_dim, len(word_map), 
+                                          encoder_dim, dropout, num_layers=3, use_one_hot=use_one_hot)
         decoder_optimizer = torch.optim.Adam(params = filter(lambda p: p.requires_grad, decoder.parameters()), lr = decoder_lr)
 
         # Initialize encoder with or without pretrained weights
@@ -102,6 +105,16 @@ def main():
             decoder_optimizer = checkpoint['decoder_optimizer']
             encoder = checkpoint['encoder']
             encoder_optimizer = checkpoint['encoder_optimizer']
+            
+            # Check if the checkpoint decoder has the use_one_hot attribute
+            # If not, set it to False for backward compatibility
+            if not hasattr(decoder, 'use_one_hot'):
+                decoder.use_one_hot = False
+                print("Checkpoint decoder doesn't have one-hot encoding setting. Setting to False.")
+            else:
+                # If the checkpoint has use_one_hot attribute, use that instead of command-line arg
+                use_one_hot = decoder.use_one_hot
+                print(f"Using one-hot encoding setting from checkpoint: {use_one_hot}")
             
             # Try to load BLEU scores if available
             bleu_scores_file = os.path.join('model_outputs', f'bleu_scores_{data_name}.json')
@@ -155,13 +168,14 @@ def main():
     print(f"Training model on {device}.")
     print(f"Training for {epochs} epochs from epoch {start_epoch}.")
     print(f"Fine-tuning encoder: {fine_tune_encoder}")
+    print(f"Using one-hot encoding: {use_one_hot}")
 
     for epoch in range(start_epoch, epochs):
         if epochs_since_improvement == 20:
             print("No improvement for 20 epochs. Stopping training.")
             break
-        if epochs_since_improvement > 0 and epochs_since_improvement % 10 == 0:
-            adjust_learning_rate(decoder_optimizer, 0.8)
+        if epochs_since_improvement > 0 and epochs_since_improvement % 5 == 0:
+            adjust_learning_rate(decoder_optimizer, 0.7)
             #if encoder is trained, adjust learning rate for encoder
             if fine_tune_encoder:
                 adjust_learning_rate(encoder_optimizer, 0.8)

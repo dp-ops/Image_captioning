@@ -19,6 +19,42 @@ warnings.filterwarnings("ignore")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Define image transformation pipeline
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                         std=[0.229, 0.224, 0.225])
+])
+
+def read_image(image_path):
+    """
+    Read an image using either PIL or OpenCV
+    
+    :param image_path: path to the image file
+    :return: RGB image as numpy array of shape (height, width, 3)
+    """
+    # Try using PIL first
+    try:
+        img = Image.open(image_path).convert('RGB')
+        # Convert to numpy array and ensure RGB order
+        img = np.array(img)
+        return img
+    except Exception as e:
+        print(f"Error loading image with PIL: {e}")
+        print("Trying OpenCV instead...")
+        
+    # Fallback to OpenCV
+    try:
+        img = cv2.imread(image_path)
+        if img is None:
+            raise Exception(f"OpenCV couldn't read the image at {image_path}")
+        # Convert BGR to RGB
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return img
+    except Exception as e:
+        print(f"Error loading image with OpenCV: {e}")
+        return None
+
 def find_image_captions(image_path, captions_file):
     """
     Find the original captions for an image from Karpathy's dataset JSON file
@@ -53,107 +89,87 @@ def find_image_captions(image_path, captions_file):
 
 def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=3):
     """
+    Reads an image and captions it with beam search.
+
     :param encoder: encoder model
     :param decoder: decoder model
-    :param image_path: path to image to caption
+    :param image_path: path to image
     :param word_map: word map
-    :param beam_size: beam size
-    :return: caption
+    :param beam_size: number of sequences to consider at each step
+    :return: caption, weights for visualization
     """
     k = beam_size
     vocab_size = len(word_map)
-
+    
     # Read image and process
-    try:
-        # Method 1: Try using PIL and convert to numpy
-        img_pil = Image.open(image_path)
-        image = np.array(img_pil)
-        
-        # If image is grayscale, convert to RGB
-        if len(image.shape) == 2:
-            image = np.stack((image,) * 3, axis=-1)
-        elif image.shape[2] == 1:
-            image = np.concatenate([image, image, image], axis=2)
-        
-        # Convert from RGB to BGR if needed for cv2
-        if image.shape[2] == 3:  # Color image
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    except Exception as e:
-        print(f"PIL loading failed: {e}, trying OpenCV directly")
-        # Method 2: Fallback to OpenCV
-        image = cv2.imread(image_path)
-        if image is None:
-            raise ValueError(f"Could not load image at {image_path}")
+    img = read_image(image_path)
+    if img is None:
+        raise Exception(f"Could not read image at {image_path}")
     
-    # Convert back to RGB for processing (OpenCV loads as BGR)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    print(f"Image shape before transforms: {img.shape}")
     
-    # Resize and normalize
-    image = cv2.resize(image, (256, 256))
-    image = image.transpose(2, 0, 1)  # (H,W,C) -> (C,H,W)
-    image = image / 255.0
-    image = torch.FloatTensor(image).to(device)
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    transform = transforms.Compose([normalize])
-    image = transform(image) #(3, 256, 256)
-
-    #Encode image
-    image = image.unsqueeze(0) #(1, 3, 256, 256)
-    encoder_out = encoder(image) #(1, encoder_dim, enc_image_size, enc_image_size)
+    # Encode
+    img = transform(img)
+    img = img.unsqueeze(0)  # Add batch dimension (1, 3, 256, 256)
+    img = img.to(device)
+    encoder_out = encoder(img)  # (1, enc_image_size, enc_image_size, encoder_dim)
+    print(f"Encoder output shape: {encoder_out.shape}")
     
-    # Get dimensions of encoder output
-    if encoder_out.dim() == 4:  # (batch_size, channels, height, width)
-        # ResNet outputs (batch_size, channels, height, width)
-        batch_size, encoder_dim, enc_image_size, _ = encoder_out.size()
-        # Reshape to (batch_size, height*width, channels)
-        encoder_out = encoder_out.permute(0, 2, 3, 1)  # (batch_size, height, width, channels)
+    # Get dimensions
+    if encoder_out.dim() == 4:
+        # If output is (batch_size, enc_image_size, enc_image_size, encoder_dim)
+        encoder_dim = encoder_out.size(-1)
+        enc_image_size = encoder_out.size(1)
+        # Flatten encoding
+        encoder_out = encoder_out.view(1, -1, encoder_dim)  # (1, num_pixels, encoder_dim)
     else:
-        # Handle the case where the encoder output is differently shaped
-        print(f"Encoder output shape: {encoder_out.size()}")
-        if encoder_out.dim() == 3:
-            # If it's a 3D tensor like (batch_size, num_pixels, encoder_dim)
-            batch_size, num_pixels, encoder_dim = encoder_out.size()
-            enc_image_size = int(math.sqrt(num_pixels))  # Assuming it's square
-        else:
-            # Default fallback
-            batch_size = encoder_out.size(0)
-            encoder_dim = encoder_out.size(-1)  # Last dimension is usually the feature dimension
-            enc_image_size = 14  # Default for ResNet
+        # If output is already (batch_size, num_pixels, encoder_dim)
+        encoder_dim = encoder_out.size(-1)
+        enc_image_size = int(math.sqrt(encoder_out.size(1)))
     
-    #Flatten encoding
-    encoder_out = encoder_out.view(1, -1, encoder_dim) #(1, num_pixels, encoder_dim)
     num_pixels = encoder_out.size(1)
-
-    encoder_out = encoder_out.expand(k, num_pixels, encoder_dim) #(k, num_pixels, encoder_dim)
-
-    #tensor to store top k sequences; now they are just <start> tokens
-    k_prev_words = torch.LongTensor([[word_map['<start>']]] * k).to(device) #(k, 1)
-    seqs = k_prev_words
-    top_k_scores = torch.zeros(k, 1).to(device) #(k, 1)
-    attention_weights = torch.zeros(k, 1, enc_image_size, enc_image_size).to(device) #(k, 1, enc_image_size, enc_image_size)
-
-    #list to store complete sequences, alphas and scores
+    
+    # Expand encoder_out for beam search
+    encoder_out = encoder_out.expand(k, num_pixels, encoder_dim)
+    
+    # Initialize LSTM state
+    h_list, c_list = decoder.init_hidden_state(encoder_out)
+    
+    # Expand states for beam search
+    h_list = [h.expand(k, -1) for h in h_list]
+    c_list = [c.expand(k, -1) for c in c_list]
+    
+    # Tensor to store top k previous words at each step; now they're just <start>
+    k_prev_words = torch.LongTensor([[word_map['<start>']]] * k).to(device)
+    seqs = k_prev_words  # (k, 1)
+    top_k_scores = torch.zeros(k, 1).to(device)
+    
+    # Lists to store completed sequences, their alphas and scores
     complete_seqs = list()
     complete_seqs_scores = list()
-    complete_seqs_alphas = list()
-
-    #start decoding 
-    step = 1
-    h_list, c_list = decoder.init_hidden_state(encoder_out)  # Initialize states
+    complete_alphas = list()
     
-    # Expand h_list and c_list for beam size
-    h_list = [h.expand(k, -1) for h in h_list]  # Expand each hidden state
-    c_list = [c.expand(k, -1) for c in c_list]  # Expand each cell state
-
-    # s is a number less than or equal to k, because sequences are removed from this process once they hit <end>
+    # Collect alphas at each step for visualization
+    all_alphas = torch.zeros(k, 1, num_pixels).to(device)
+    
+    # Decoding
+    step = 1
+    
     while True:
-        embeddings = decoder.embedding(k_prev_words).squeeze(1)
+        # Check if the model uses one-hot encoding
+        if hasattr(decoder, 'use_one_hot') and decoder.use_one_hot:
+            # Convert to one-hot vectors first
+            one_hot = decoder.one_hot_encoder(k_prev_words)
+            embeddings = decoder.embedding(one_hot.float()).squeeze(1)
+        else:
+            # Traditional embedding lookup
+            embeddings = decoder.embedding(k_prev_words).squeeze(1)
+        
         # Use last layer's hidden state for attention
-        awe, alpha = decoder.attention(encoder_out, h_list[-1])  # Use h_list[-1] instead of h
-        alpha = alpha.view(-1, enc_image_size, enc_image_size)
-        gate = decoder.sigmoid(decoder.f_beta(h_list[-1]))  # Use h_list[-1]
+        awe, alpha = decoder.attention(encoder_out, h_list[-1])
+        gate = decoder.sigmoid(decoder.f_beta(h_list[-1]))
         awe = gate * awe
-
+        
         h_new = []
         c_new = []
         
@@ -163,72 +179,73 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=
                 lstm_input = torch.cat([embeddings, awe], dim=1)
             else:
                 lstm_input = h_new[-1]
-
+                
             h, c = decoder.lstm_layers[i](
                 lstm_input,
-                (h_list[i], c_list[i])  # Remove the batch size slicing
+                (h_list[i], c_list[i])
             )
             h_new.append(h)
             c_new.append(c)
-
-        # Update hidden and cell states
+            
+        # Update states
         h_list = h_new
         c_list = c_new
-
-        scores = decoder.fc(h_list[-1])  # Use last layer's hidden state
-        scores = F.log_softmax(scores, dim=1)
-
-        #add new scores
-        scores = top_k_scores.expand_as(scores) + scores #(k, vocab_size)
-
-        #for the first step, all k sequences are equally likely, so we can just take the best (k, 1) sequences
-        if step == 1:
-            top_k_scores, top_k_words = scores[0].topk(k, 0, True, True) #(k, 1)
-        else:
-            top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True) #(k, )
         
-        #convert scores and words to lists
-        prev_word_inds = top_k_words / vocab_size #(k, )
-        next_word_inds = top_k_words % vocab_size #(k, )
-
-        #add new words to sequences
-        seqs = torch.cat([seqs[prev_word_inds.long()], next_word_inds.unsqueeze(1)], dim=1) #(k, step)
-        attention_weights = torch.cat([attention_weights[prev_word_inds.long()], alpha[prev_word_inds.long()].unsqueeze(1)], dim=1) #(k, step, enc_image_size, enc_image_size)
-
-        #find incomplete sequences
+        # Generate prediction using last layer
+        scores = decoder.fc(decoder.dropout(h_list[-1]))
+        scores = F.log_softmax(scores, dim=1)
+        
+        # Add scores
+        scores = top_k_scores.expand_as(scores) + scores
+        
+        # For the first step, all k sequences are equally likely, so we can just take the best k
+        if step == 1:
+            top_k_scores, top_k_words = scores[0].topk(k, 0, True, True)
+        else:
+            top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)
+        
+        # Convert scores and words to lists
+        prev_word_inds = top_k_words / vocab_size
+        next_word_inds = top_k_words % vocab_size
+        
+        # Add new words to sequences
+        seqs = torch.cat([seqs[prev_word_inds.long()], next_word_inds.unsqueeze(1)], dim=1)
+        all_alphas = torch.cat([all_alphas[prev_word_inds.long()], alpha[prev_word_inds.long()].unsqueeze(1)], dim=1)
+        
+        # Find incomplete sequences
         incomplete_inds = [ind for ind, next_word in enumerate(next_word_inds) if next_word != word_map['<end>']]
-
         complete_inds = list(set(range(len(next_word_inds))) - set(incomplete_inds))
-
+        
+        # Store complete sequences
         if len(complete_inds) > 0:
             complete_seqs.extend(seqs[complete_inds].tolist())
             complete_seqs_scores.extend(top_k_scores[complete_inds])
-            complete_seqs_alphas.extend(attention_weights[complete_inds])
-
-        k = len(incomplete_inds) #number of incomplete sequences
-
+            complete_alphas.extend(all_alphas[complete_inds])
+        
+        k = len(incomplete_inds)
+        
         if k == 0:
             break
-
-        #proceed with incomplete sequences
+        
+        # Proceed with incomplete sequences
         seqs = seqs[incomplete_inds]
-        attention_weights = attention_weights[incomplete_inds]
+        all_alphas = all_alphas[incomplete_inds]
         h_list = [h[prev_word_inds[incomplete_inds].long()] for h in h_list]
         c_list = [c[prev_word_inds[incomplete_inds].long()] for c in c_list]
         encoder_out = encoder_out[prev_word_inds[incomplete_inds].long()]
         top_k_scores = top_k_scores[incomplete_inds].unsqueeze(1)
         k_prev_words = next_word_inds[incomplete_inds].unsqueeze(1)
-
+        
         if step > 50:
             break
         step += 1
-
+    
     i = complete_seqs_scores.index(max(complete_seqs_scores))
     seq = complete_seqs[i]
-    alphas = complete_seqs_alphas[i]
-
+    alphas = complete_alphas[i]
+    
     return seq, alphas
-        
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Show, Attend and Tell - Generate Captions")
 

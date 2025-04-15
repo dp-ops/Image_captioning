@@ -8,6 +8,8 @@
 import torch
 import torch.nn as nn
 from torchsummary import summary
+import torchvision
+from torchvision import models
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -160,6 +162,31 @@ class ResNet(nn.Module): #[3, 4, 6, 3]
 #     """
 #     return ResNet(block, [3, 4, 6, 3], img_channel, num_classes)
 
+class OneHotEncoder(nn.Module):
+    """
+    Convert word indices to one-hot encoded vectors
+    """
+    def __init__(self, vocab_size):
+        super(OneHotEncoder, self).__init__()
+        self.vocab_size = vocab_size
+        
+    def forward(self, word_indices):
+        # word_indices shape: (batch_size, max_seq_length)
+        # output shape: (batch_size, max_seq_length, vocab_size)
+        batch_size = word_indices.size(0)
+        seq_length = word_indices.size(1) if word_indices.dim() > 1 else 1
+        
+        # Reshape word_indices if it's 1D
+        if word_indices.dim() == 1:
+            word_indices = word_indices.unsqueeze(1)
+        
+        # Create one-hot encoding
+        one_hot = torch.zeros(batch_size, seq_length, self.vocab_size, device=word_indices.device)
+        # Scatter 1s at the appropriate indices
+        one_hot.scatter_(2, word_indices.unsqueeze(2), 1)
+        
+        return one_hot
+
 class EncoderCNN(nn.Module):
     """
     Encoder CNN using ResNet34 for feature extraction in image captioning
@@ -296,7 +323,7 @@ class Attention(nn.Module):
         return attention_weighted_encoding, alpha
     
 class LSTMDecoderWithAttention(nn.Module):
-    def __init__(self, attention_dim, embed_dim, decoder_dim, vocab_size, encoder_dim=512, dropout=0.5, num_layers=3):
+    def __init__(self, attention_dim, embed_dim, decoder_dim, vocab_size, encoder_dim=512, dropout=0.5, num_layers=3, use_one_hot=True):
         """
         :param attention_dim: size of attention network
         :param embed_dim: embedding dimension for words
@@ -305,6 +332,7 @@ class LSTMDecoderWithAttention(nn.Module):
         :param encoder_dim: feature size of encoded images
         :param dropout: dropout probability
         :param num_layers: number of LSTM layers (default: 3)
+        :param use_one_hot: whether to use one-hot encoding for word embeddings
         """
         super(LSTMDecoderWithAttention, self).__init__()
 
@@ -313,16 +341,25 @@ class LSTMDecoderWithAttention(nn.Module):
         self.embed_dim = embed_dim
         self.decoder_dim = decoder_dim
         self.vocab_size = vocab_size
-        self.dropout = dropout
+        self.dropout_rate = dropout  # Store as a rate
+        self.dropout = nn.Dropout(p=dropout)  # Create actual dropout layer
         self.num_layers = num_layers
+        self.use_one_hot = use_one_hot
 
         # Create an Attention Network Instance
         self.attention = Attention(encoder_dim, decoder_dim, attention_dim)
 
-        # Word embedding layer
-        self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.dropout = nn.Dropout(p=self.dropout)
-        
+        # One-hot encoder
+        self.one_hot_encoder = OneHotEncoder(vocab_size) if use_one_hot else None
+
+        # Embedding layer - converts indices or one-hot vectors to embeddings
+        if use_one_hot:
+            # Linear layer to convert one-hot vectors to embeddings
+            self.embedding = nn.Linear(vocab_size, embed_dim)
+        else:
+            # Traditional embedding lookup layer
+            self.embedding = nn.Embedding(vocab_size, embed_dim)
+
         # Create multiple LSTM layers
         self.lstm_layers = nn.ModuleList([
             nn.LSTMCell(embed_dim + encoder_dim if i == 0 else decoder_dim, 
@@ -351,8 +388,9 @@ class LSTMDecoderWithAttention(nn.Module):
         '''
         Initializes parameters with values from the uniform distribution, for easier convergence
         '''
-        # Initialize embedding weights
-        self.embedding.weight.data.uniform_(-0.1, 0.1)
+        if not self.use_one_hot:
+            # Initialize embedding weights
+            self.embedding.weight.data.uniform_(-0.1, 0.1)
         
         # Initialize LSTM layers
         for lstm in self.lstm_layers:
@@ -394,8 +432,15 @@ class LSTMDecoderWithAttention(nn.Module):
         encoder_out = encoder_out[sort_ind]
         encoded_captions = encoded_captions[sort_ind]
 
-        # Embedding
-        embeddings = self.embedding(encoded_captions)
+        # Get embeddings for captions
+        if self.use_one_hot:
+            # Convert to one-hot vectors
+            one_hot_captions = self.one_hot_encoder(encoded_captions)
+            # Get embeddings from one-hot vectors
+            embeddings = self.embedding(one_hot_captions.float())
+        else:
+            # Traditional embedding lookup
+            embeddings = self.embedding(encoded_captions)
 
         # Initialize LSTM state
         h_list, c_list = self.init_hidden_state(encoder_out)
