@@ -30,6 +30,7 @@ This document provides a comprehensive guide to the ResNet34-LSTM image captioni
    - [Training Issues](#training-issues)
    - [Graphviz Installation](#graphviz-installation)
    - [Common Errors](#common-errors)
+10. [How A2C Works](#how-a2c-works)
 
 ## Overview
 
@@ -177,6 +178,49 @@ The decoder is an LSTM network that generates captions word by word:
 - **Outputs**:
   - Word predictions: (batch_size, max_length, vocab_size)
   - Attention weights: (batch_size, max_length, 196)
+
+## How This Works
+
+The image captioning system is designed to generate descriptive captions for images by combining a convolutional neural network (CNN) encoder with a Long Short-Term Memory (LSTM) decoder. Here's an overview of how the system works:
+
+### 1. Data Preparation
+- The `create_data_n_prep.py` script processes the dataset by:
+  - Extracting image features using ResNet34.
+  - Tokenizing and encoding captions into numerical format.
+  - Creating a word map (vocabulary) and saving it as a JSON file.
+  - Splitting the dataset into training, validation, and test sets.
+
+### 2. Model Architecture
+- **Encoder**: A ResNet34 CNN extracts spatial features from input images.
+- **Attention Mechanism**: Focuses on relevant parts of the image for each word in the caption.
+- **Decoder**: An LSTM generates captions word by word, guided by the attention mechanism.
+
+### 3. Training
+- The `train.py` script trains the model using the prepared dataset.
+- Key steps during training:
+  1. Images are passed through the encoder to extract features.
+  2. Captions are tokenized and fed into the decoder.
+  3. The decoder generates predictions for the next word in the sequence.
+  4. Loss is calculated using cross-entropy and attention regularization.
+  5. Gradients are computed and used to update model weights.
+- Training metrics (loss, accuracy, BLEU scores) are tracked and saved for visualization.
+
+### 4. Caption Generation
+- The `captions.py` script generates captions for new images.
+- Steps:
+  1. The image is passed through the encoder to extract features.
+  2. The decoder generates a caption using beam search or greedy decoding.
+  3. Optionally, attention weights are visualized to show which parts of the image influenced each word.
+
+### 5. Evaluation
+- BLEU-4 scores are used to evaluate the quality of generated captions.
+- Validation and test sets are used to measure model performance.
+
+### 6. Outputs
+- Model checkpoints, training metrics, and generated captions are saved in the `model_outputs` directory.
+- Attention visualizations and captioned images are also saved for analysis.
+
+This system is modular and extensible, allowing you to experiment with different datasets, architectures, and training strategies.
 
 ## Training the Model
 
@@ -491,6 +535,48 @@ If you encounter errors with model visualization:
    - The script now supports both PIL and OpenCV image loading methods
    - Ensure your image file exists and is a valid image format (jpg, png, etc.)
    - If you're getting errors with PIL, the script will automatically try OpenCV as a fallback
+
+## How A2C Works
+
+The Advantage Actor-Critic (A2C) reinforcement learning approach is implemented to improve the image captioning model by directly optimizing for BLEU-4 scores. Here's an overview of how A2C works in this project:
+
+### 1. Actor-Critic Framework
+- **Actor**: The existing image captioning model (encoder-decoder with attention) acts as the policy network.
+  - It generates captions by sampling words from its probability distribution.
+- **Critic**: A separate neural network predicts the expected reward (value) of the generated sequence at each time step.
+
+### 2. Training Process
+- **Sampling**: The actor generates captions by sampling words from its probability distribution.
+- **Reward**: BLEU-4 scores are used as rewards for the generated captions.
+- **Advantage Calculation**: The advantage is computed as the difference between the actual rewards and the critic's predicted values.
+  - Advantage = Reward - Predicted Value
+- **Policy Gradient Update**: The actor is updated using the policy gradient method, weighted by the advantage.
+- **Critic Update**: The critic is trained to minimize the mean squared error between its predictions and the actual rewards.
+
+### 3. Key Components
+- **Entropy Regularization**: Encourages exploration by penalizing low-entropy (overconfident) predictions.
+- **Discount Factor (Gamma)**: Rewards are discounted over time to prioritize immediate rewards.
+- **Gradient Clipping**: Prevents exploding gradients during training.
+
+### 4. Implementation Details
+- The actor uses the existing encoder-decoder model with attention.
+- The critic is a simple multi-layer perceptron (MLP) that takes the decoder's hidden states as input and predicts the expected reward.
+- BLEU-4 scores are computed for each generated caption and used as the final reward.
+- The A2C training loop alternates between updating the actor and the critic.
+
+### 5. Running A2C
+To train the model using A2C, run the following command:
+
+```bash
+python -m src.A2C --checkpoint model_outputs/BEST_flickr8k_5_5.pth.tar --epochs 20 --batch_size 32
+```
+
+### 6. Outputs
+- **Actor Loss**: Measures how well the actor improves its policy based on the advantage.
+- **Critic Loss**: Measures the accuracy of the critic's value predictions.
+- **BLEU-4 Scores**: Tracks the quality of generated captions over time.
+
+This approach allows the model to directly optimize for BLEU-4 scores, leading to more accurate and diverse captions.
 
 ## Acknowledgements
 

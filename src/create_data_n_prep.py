@@ -229,9 +229,9 @@ if __name__ == '__main__':
     #Create input files with their word map 
     #change the dataset to flickr8k or flickr30k
     create_input_data(
-        dataset='flickr30k',
-        json_path='data/caption_datasets/dataset_flickr30k.json',
-        image_folder='data/flickr30k/Images',
+        dataset='flickr8k',
+        json_path='data/caption_datasets/dataset_flickr8k.json',
+        image_folder='data/flickr8k/Images',
         captions_per_image=5,
         min_word_freq=5,
         output_folder='data_output',
