@@ -583,6 +583,38 @@ python -m src.A2C --checkpoint model_outputs/BEST_flickr8k_5_5.pth.tar --epochs 
 
 This approach allows the model to directly optimize for BLEU-4 scores, leading to more accurate and diverse captions.
 
+The A2C implementation has been enhanced with several new features to improve training stability and performance:
+
+- **Freeze Encoder**: You can now completely freeze the CNN encoder during training using the `--freeze_encoder` flag. This is useful for stabilizing training when the encoder is already well-trained.
+- **Resume Training**: Continue training from a previous A2C checkpoint with the `--resume` flag, preserving optimizer states and metrics.
+- **Entropy Annealing**: Gradually reduces the entropy weight over epochs to balance exploration and exploitation.
+- **Reward Clipping**: Stabilizes training by clipping rewards to a specified range.
+- **Reward Baseline**: Reduces variance in policy updates by using a baseline calculated as the mean reward for the batch.
+- **Temperature Control**: Adjusts the exploration level during sampling with the `--temperature` parameter.
+- **Metrics Saving**: Training and BLEU metrics are automatically saved and exported to the model output folder.
+
+## Running A2C with New Features
+
+To train the model using the updated A2C implementation, use the following command:
+
+```bash
+python -m src.A2C --checkpoint model_outputs/BEST_flickr8k_5_5.pth.tar --epochs 30 --batch_size 32 --temperature 1.2 --entropy_weight 0.05 --value_loss_weight 0.2 --freeze_encoder
+```
+
+### Command Line Arguments
+
+- `--checkpoint`: Path to the model checkpoint to resume from.
+- `--epochs`: Number of epochs to train.
+- `--batch_size`: Batch size for training.
+- `--temperature`: Temperature for sampling (higher values = more exploration).
+- `--entropy_weight`: Initial weight for entropy regularization.
+- `--value_loss_weight`: Weight for the value loss term.
+- `--freeze_encoder`: Completely freeze the CNN encoder during training.
+- `--resume`: Resume training from a previous A2C checkpoint.
+- `--no_entropy_annealing`: Disable entropy weight annealing.
+
+These updates provide more control over the training process and help achieve better performance by directly optimizing for BLEU-4 scores.
+
 ## Acknowledgements
 
 This implementation is based on the "Show, Attend and Tell" paper by Xu et al. # Image_captioning

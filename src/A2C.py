@@ -24,9 +24,9 @@ checkpoint = 'model_outputs/BEST_flickr8k_5_5.pth.tar'  # model checkpoint
 
 # A2C (Advantage Actor-Critic) hyperparameters
 critic_lr = 1e-4
-actor_lr = 1e-5
-entropy_weight = 0.01  # Weight for the entropy regularization term
-value_loss_weight = 0.5  # Weight for the value loss term
+actor_lr = 5e-5
+entropy_weight = 0.05  # Weight for the entropy regularization term
+value_loss_weight = 0.2  # Weight for the value loss term
 gamma = 0.99  # Discount factor
 max_grad_norm = 5.0  # For gradient clipping
 
@@ -228,10 +228,10 @@ class A2CImageCaptioning:
         :param hypothesis: predicted sentence (list of tokens)
         :return: BLEU score
         """
-        smoothing_function = None
+        smoothing = None
         try:
             from nltk.translate.bleu_score import SmoothingFunction
-            smoothing_function = SmoothingFunction().method1
+            smoothing = SmoothingFunction().method1
         except ImportError:
             pass
         
@@ -251,7 +251,7 @@ class A2CImageCaptioning:
         # Calculate BLEU score with smoothing for short sentences
         weights = (0.25, 0.25, 0.25, 0.25)  # Default for BLEU-4
         try:
-            return sentence_bleu(clean_references, clean_hypothesis, smoothing_function=smoothing_function, weights=weights)
+            return sentence_bleu(clean_references, clean_hypothesis, smoothing_function=smoothing, weights=weights)
         except:
             # Fallback if there are issues
             return 0.0
@@ -418,6 +418,10 @@ class A2CImageCaptioning:
         advantages = torch.zeros_like(values)
         bleu_scores = []
         
+        # Initialize smoothing function for BLEU calculation
+        from nltk.translate.bleu_score import SmoothingFunction
+        smoothing = SmoothingFunction().method1
+        
         # Compute sequence lengths (excluding padding)
         sequence_lengths = torch.zeros(batch_size, dtype=torch.long, device=self.device)
         for i in range(batch_size):
@@ -426,6 +430,7 @@ class A2CImageCaptioning:
             sequence_lengths[i] = end_pos[0] + 1 if len(end_pos) > 0 else samples.size(1)
         
         # For each sample, compute BLEU score against all reference captions
+        all_rewards = []
         for i in range(batch_size):
             sample_tokens = samples[i].tolist()
             sample_length = sequence_lengths[i].item()
@@ -447,18 +452,35 @@ class A2CImageCaptioning:
                 ref_tokens = captions[i, :caption_lengths[i]].tolist()
                 references.append(ref_tokens)
             
-            # Compute BLEU score for this sample
-            bleu = self.compute_sentence_bleu(references, sample_tokens)
-            bleu_scores.append(bleu)
+            # Compute BLEU scores with smoothing
+            bleu1 = sentence_bleu(references, sample_tokens, weights=(1, 0, 0, 0), smoothing_function=smoothing)
+            bleu2 = sentence_bleu(references, sample_tokens, weights=(0.5, 0.5, 0, 0), smoothing_function=smoothing)
+            bleu4 = sentence_bleu(references, sample_tokens, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=smoothing)
+            
+            # Combined reward (gives credit for partial matches)
+            reward = 0.2 * bleu1 + 0.3 * bleu2 + 0.5 * bleu4
+            bleu_scores.append(bleu4)
+            all_rewards.append(reward)
             
             # Compute returns using the BLEU score as the final reward
-            sample_returns = self.compute_returns(bleu, min(sample_length, seq_length))
+            sample_returns = self.compute_returns(reward, min(sample_length, seq_length))
+            
+            # Apply reward clipping to stabilize training
+            sample_returns = torch.clamp(sample_returns, min=-1.0, max=1.0)
             
             # Fill in rewards for this sample
             rewards[i, :min(sample_length, seq_length)] = sample_returns
         
-        # 5. Compute advantages (rewards - value predictions)
-        advantages = rewards - values.detach()
+        # Calculate the baseline as the mean reward for this batch
+        # This helps reduce variance in updates
+        reward_baseline = sum(all_rewards) / len(all_rewards) if all_rewards else 0.0
+        
+        # Create a tensor that has the baseline for each sequence
+        baseline_tensor = torch.full_like(rewards, reward_baseline)
+        
+        # 5. Compute advantages (rewards - baseline - value predictions)
+        # Use a combination of critic values and mean reward baseline
+        advantages = rewards - 0.5 * (values.detach() + baseline_tensor)
         
         # 6. Compute losses
         # Actor loss: -log_prob * advantage - entropy_weight * entropy (entropy is for exploration)
@@ -668,7 +690,8 @@ class A2CImageCaptioning:
 
 
 def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None, 
-              fine_tune_encoder=False, freeze_encoder=False, workers=0, resume_training=False):
+              fine_tune_encoder=False, freeze_encoder=False, workers=0, resume_training=False,
+              temperature=1.0, entropy_weight=0.05, entropy_annealing=True, value_loss_weight=0.2):
     """
     Train the image captioning model with A2C
     :param data_folder: folder with data files
@@ -680,6 +703,10 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
     :param freeze_encoder: whether to freeze the encoder completely (overrides fine_tune_encoder)
     :param workers: number of workers for data loading
     :param resume_training: whether to resume training from the checkpoint (load optimizer states and metrics)
+    :param temperature: temperature for exploration (higher values = more exploration)
+    :param entropy_weight: initial weight for entropy regularization
+    :param entropy_annealing: whether to apply annealing to entropy weight
+    :param value_loss_weight: weight for the value loss term
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cudnn.benchmark = True
@@ -699,7 +726,10 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
         word_map=word_map,
         device=device,
         checkpoint=checkpoint,
-        fine_tune_encoder=fine_tune_encoder
+        fine_tune_encoder=fine_tune_encoder,
+        entropy_weight=entropy_weight,
+        value_loss_weight=value_loss_weight,
+        temperature=temperature
     )
     
     # Data loaders
@@ -771,6 +801,12 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
                 adjust_learning_rate(optimizer, 0.8)
             if model.encoder_optimizer is not None:
                 adjust_learning_rate(model.encoder_optimizer, 0.8)
+        
+        # Apply entropy annealing if enabled
+        if entropy_annealing:
+            current_entropy_weight = max(0.001, entropy_weight * (0.95 ** epoch))
+            model.entropy_weight = current_entropy_weight
+            print(f"Current entropy weight: {current_entropy_weight:.6f}")
                 
         # One epoch's training with A2C
         actor_loss, critic_loss, train_bleu = model.train_epoch(train_loader, epoch)
@@ -894,6 +930,10 @@ def main():
     parser.add_argument('--freeze_encoder', action='store_true', help='completely freeze encoder (overrides fine_tune_encoder)')
     parser.add_argument('--resume', action='store_true', help='resume training from the A2C checkpoint')
     parser.add_argument('--workers', default=0, type=int, help='number of workers for data loading')
+    parser.add_argument('--temperature', default=1.0, type=float, help='temperature for sampling (higher = more exploration)')
+    parser.add_argument('--entropy_weight', default=0.05, type=float, help='weight for entropy regularization term')
+    parser.add_argument('--value_loss_weight', default=0.2, type=float, help='weight for value loss term')
+    parser.add_argument('--no_entropy_annealing', action='store_true', help='disable entropy weight annealing')
     args = parser.parse_args()
     
     # Train with A2C
@@ -906,7 +946,11 @@ def main():
         fine_tune_encoder=args.fine_tune_encoder,
         freeze_encoder=args.freeze_encoder,
         workers=args.workers,
-        resume_training=args.resume
+        resume_training=args.resume,
+        temperature=args.temperature,
+        entropy_weight=args.entropy_weight,
+        entropy_annealing=not args.no_entropy_annealing,
+        value_loss_weight=args.value_loss_weight
     )
 
 
