@@ -1,3 +1,9 @@
+### 
+# Added new critic network that combines CNN image features and decoder hidden state features
+# to predict the expected reward for an image-caption pair.
+#Change CriticNetwork to HybridCriticNetwork 
+###
+
 import time
 import torch.backends.cudnn as cudnn
 import torch
@@ -67,6 +73,60 @@ class CriticNetwork(nn.Module):
         x = self.relu(self.fc2(x))
         x = self.dropout(x)
         value = self.fc3(x)
+        return value
+
+#Hybrid critic network (combines CNN and LSTM features)
+
+class HybridCriticNetwork(nn.Module):
+    """
+    Critic network that combines CNN image features and decoder hidden state features
+    to predict the expected reward for an image-caption pair.
+    """
+    def __init__(self, img_channels=512, decoder_dim=512, hidden_dim=256):
+        super(HybridCriticNetwork, self).__init__()
+
+        # Convolutional branch for image features
+        self.conv1 = nn.Conv2d(img_channels, 256, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(256, 128, kernel_size=3, padding=1)
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))  # Output: (batch_size, 128, 1, 1)
+
+        # Fully connected layers
+        self.fc_img = nn.Linear(128, hidden_dim // 2)
+        self.fc_dec = nn.Linear(decoder_dim, hidden_dim // 2)
+        self.fc_combined = nn.Linear(hidden_dim, hidden_dim)
+        self.output_layer = nn.Linear(hidden_dim, 1)
+
+        self.dropout = nn.Dropout(0.3)
+        self.relu = nn.ReLU()
+
+        # Init weights
+        for layer in [self.conv1, self.conv2]:
+            nn.init.kaiming_normal_(layer.weight)
+            nn.init.constant_(layer.bias, 0)
+        for layer in [self.fc_img, self.fc_dec, self.fc_combined, self.output_layer]:
+            nn.init.xavier_uniform_(layer.weight)
+            nn.init.constant_(layer.bias, 0)
+
+    def forward(self, img_feats, decoder_feats):
+        """
+        :param img_feats: CNN feature map (batch_size, img_channels, H, W)
+        :param decoder_feats: decoder hidden state (batch_size, decoder_dim)
+        :return: scalar value for each state (batch_size, 1)
+        """
+        # Image path
+        x_img = self.relu(self.conv1(img_feats))
+        x_img = self.relu(self.conv2(x_img))
+        x_img = self.pool(x_img).squeeze(-1).squeeze(-1)  # -> (batch_size, 128)
+        x_img = self.relu(self.fc_img(x_img))
+
+        # Decoder path
+        x_dec = self.relu(self.fc_dec(decoder_feats))
+
+        # Combine both
+        x = torch.cat([x_img, x_dec], dim=1)
+        x = self.relu(self.fc_combined(x))
+        x = self.dropout(x)
+        value = self.output_layer(x)
         return value
 
 
@@ -139,7 +199,7 @@ class A2CImageCaptioning:
                 self.critic = checkpoint_data['critic'].to(device)
             else:
                 # Initialize new critic for regular checkpoints
-                self.critic = CriticNetwork(decoder_dim).to(device)
+                self.critic = HybridCriticNetwork(decoder_dim).to(device)
         else:
             # Initialize encoder and decoder from scratch (unlikely to be used, but included for completeness)
             print("Initializing new encoder and decoder models")
@@ -165,7 +225,7 @@ class A2CImageCaptioning:
             ).to(device)
             
             # Initialize critic
-            self.critic = CriticNetwork(decoder_dim).to(device)
+            self.critic = HybridCriticNetwork(decoder_dim).to(device)
         
         # Set fine-tuning mode
         self.encoder.fine_tune(fine_tune_encoder)
