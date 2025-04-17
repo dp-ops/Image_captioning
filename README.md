@@ -571,7 +571,12 @@ To train the model using A2C, run the following command:
 python -m src.A2C --checkpoint model_outputs/BEST_flickr8k_5_5.pth.tar --epochs 20 --batch_size 32
 ```
 
-### 6. Outputs
+### 6. New Features
+- **Freeze Encoder**: You can now completely freeze the CNN encoder during training using the `--freeze_encoder` flag.
+- **Resume Training**: Continue training from a previous A2C checkpoint with the `--resume` flag, preserving optimizer states and metrics.
+- **Metrics Saving**: Training and BLEU metrics are automatically saved and exported to the model output folder.
+
+### 7. Outputs
 - **Actor Loss**: Measures how well the actor improves its policy based on the advantage.
 - **Critic Loss**: Measures the accuracy of the critic's value predictions.
 - **BLEU-4 Scores**: Tracks the quality of generated captions over time.

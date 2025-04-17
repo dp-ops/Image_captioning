@@ -14,6 +14,8 @@ import argparse
 import os
 import numpy as np
 import sys  # Add sys import
+import matplotlib.pyplot as plt  # Add matplotlib for plotting metrics
+import json
 
 data_folder = 'data_output'  # files saved by create_input_files.py
 data_name = 'flickr8k_5_5'  # base name shared by data files
@@ -116,6 +118,14 @@ class A2CImageCaptioning:
             # Load checkpoint with the right device mapping
             checkpoint_data = torch.load(checkpoint, map_location=device, weights_only=False)
             
+            # Check if this is a regular checkpoint or an A2C checkpoint
+            if 'critic' in checkpoint_data:
+                print("Loading A2C checkpoint with critic model")
+                is_a2c_checkpoint = True
+            else:
+                print("Loading regular checkpoint (encoder/decoder only)")
+                is_a2c_checkpoint = False
+            
             # Load encoder and decoder (actor) from checkpoint
             self.encoder = checkpoint_data['encoder'].to(device)
             self.decoder = checkpoint_data['decoder'].to(device)
@@ -124,11 +134,16 @@ class A2CImageCaptioning:
             encoder_dim = self.encoder.enc_dim
             decoder_dim = self.decoder.decoder_dim
             
-            # Initialize critic
-            self.critic = CriticNetwork(decoder_dim).to(device)
+            # Initialize or load critic
+            if is_a2c_checkpoint:
+                self.critic = checkpoint_data['critic'].to(device)
+            else:
+                # Initialize new critic for regular checkpoints
+                self.critic = CriticNetwork(decoder_dim).to(device)
         else:
             # Initialize encoder and decoder from scratch (unlikely to be used, but included for completeness)
             print("Initializing new encoder and decoder models")
+            is_a2c_checkpoint = False
             encoder_dim = 512  # Default for ResNet34
             
             # Initialize encoder with optional pretrained weights
@@ -176,6 +191,15 @@ class A2CImageCaptioning:
             )
         else:
             self.encoder_optimizer = None
+            
+        # Load optimizer states if it's an A2C checkpoint
+        if checkpoint is not None and is_a2c_checkpoint:
+            if 'actor_optimizer' in checkpoint_data:
+                self.actor_optimizer.load_state_dict(checkpoint_data['actor_optimizer'].state_dict())
+            if 'critic_optimizer' in checkpoint_data:
+                self.critic_optimizer.load_state_dict(checkpoint_data['critic_optimizer'].state_dict())
+            if self.encoder_optimizer is not None and 'encoder_optimizer' in checkpoint_data:
+                self.encoder_optimizer.load_state_dict(checkpoint_data['encoder_optimizer'].state_dict())
             
         # Loss functions
         self.criterion = nn.CrossEntropyLoss(ignore_index=self.pad_token, reduction='none').to(device)
@@ -330,16 +354,20 @@ class A2CImageCaptioning:
             # Compute entropy: -sum(p * log(p))
             entropy = -torch.sum(probs * log_prob, dim=1)
             
-            # Sample from the probability distribution
-            next_word_idx = torch.multinomial(probs, 1).squeeze(1)  # (batch_size,)
+            # Sample from the probability distribution for active sequences only
+            next_word_idx_active = torch.multinomial(probs[active_indices], 1).squeeze(1)  # (active_batch_size,)
             
-            # Save generated word, its log probability, and entropy
-            sequences[active_indices, step] = next_word_idx
-            log_probs[active_indices, step] = log_prob.gather(1, next_word_idx.unsqueeze(1)).squeeze(1)
-            entropies[active_indices, step] = entropy
+            # Save generated word, its log probability, and entropy for active sequences
+            sequences[active_indices, step] = next_word_idx_active
+            log_probs[active_indices, step] = log_prob[active_indices].gather(1, next_word_idx_active.unsqueeze(1)).squeeze(1)
+            entropies[active_indices, step] = entropy[active_indices]
+            
+            # Create a full batch tensor for previous words update (needed for next iteration)
+            next_word_idx = torch.zeros(batch_size, dtype=torch.long, device=self.device)
+            next_word_idx[active_indices] = next_word_idx_active
             
             # Update finished sequences mask
-            just_finished = next_word_idx == self.end_token
+            just_finished = next_word_idx_active == self.end_token
             finished[active_indices] = finished[active_indices] | just_finished
             
             # Update previous words for next iteration
@@ -379,12 +407,15 @@ class A2CImageCaptioning:
         # 2. Generate captions by sampling from the model
         samples, log_probs, entropies, hidden_states = self.generate_caption_with_sampling(encoder_out)
         
+        # Ensure we only use valid time steps in hidden states (up to the sequence length)
+        seq_length = hidden_states.size(1)
+        
         # 3. Compute critic values for each step of each sequence
-        values = self.critic(hidden_states.view(-1, hidden_states.size(-1))).view(batch_size, -1)
+        values = self.critic(hidden_states.view(-1, hidden_states.size(-1))).view(batch_size, seq_length)
         
         # 4. Compute rewards and advantages
-        rewards = torch.zeros_like(log_probs)
-        advantages = torch.zeros_like(log_probs)
+        rewards = torch.zeros_like(values)  # Match dimensions with values tensor
+        advantages = torch.zeros_like(values)
         bleu_scores = []
         
         # Compute sequence lengths (excluding padding)
@@ -421,17 +452,17 @@ class A2CImageCaptioning:
             bleu_scores.append(bleu)
             
             # Compute returns using the BLEU score as the final reward
-            returns = self.compute_returns(bleu, sample_length)
+            sample_returns = self.compute_returns(bleu, min(sample_length, seq_length))
             
             # Fill in rewards for this sample
-            rewards[i, :sample_length] = returns
+            rewards[i, :min(sample_length, seq_length)] = sample_returns
         
         # 5. Compute advantages (rewards - value predictions)
         advantages = rewards - values.detach()
         
         # 6. Compute losses
         # Actor loss: -log_prob * advantage - entropy_weight * entropy (entropy is for exploration)
-        actor_loss = -(log_probs * advantages.detach()).mean() - self.entropy_weight * entropies.mean()
+        actor_loss = -(log_probs[:, :seq_length] * advantages.detach()).mean() - self.entropy_weight * entropies[:, :seq_length].mean()
         
         # Critic loss: MSE between predicted values and actual returns
         critic_loss = self.mse_loss(values, rewards.detach())
@@ -637,7 +668,7 @@ class A2CImageCaptioning:
 
 
 def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None, 
-              fine_tune_encoder=False, workers=0):
+              fine_tune_encoder=False, freeze_encoder=False, workers=0, resume_training=False):
     """
     Train the image captioning model with A2C
     :param data_folder: folder with data files
@@ -646,7 +677,9 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
     :param epochs: number of epochs
     :param checkpoint: checkpoint to resume from
     :param fine_tune_encoder: whether to fine-tune the encoder
+    :param freeze_encoder: whether to freeze the encoder completely (overrides fine_tune_encoder)
     :param workers: number of workers for data loading
+    :param resume_training: whether to resume training from the checkpoint (load optimizer states and metrics)
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cudnn.benchmark = True
@@ -655,6 +688,11 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
     word_map_file = os.path.join(data_folder, 'WORDMAP_' + data_name + '.json')
     with open(word_map_file, 'r') as j:
         word_map = json.load(j)
+    
+    # If freeze_encoder is set, fine_tune_encoder should be False
+    if freeze_encoder:
+        fine_tune_encoder = False
+        print("Freezing encoder (all parameters)")
     
     # Initialize the A2C model
     model = A2CImageCaptioning(
@@ -677,18 +715,52 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
         batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=True
     )
     
-    # Track metrics
+    # Initialize or load metrics
+    start_epoch = 0
     best_bleu4 = 0.0
     epochs_since_improvement = 0
-    
-    # Lists to track metrics
     actor_losses = []
     critic_losses = []
     train_bleu_scores = []
     val_bleu_scores = []
     
+    # If resuming training from an A2C checkpoint, try to load metrics
+    if resume_training and checkpoint is not None:
+        try:
+            # Load the checkpoint to get the epoch number
+            checkpoint_data = torch.load(checkpoint, map_location=device, weights_only=False)
+            
+            if 'epoch' in checkpoint_data and 'bleu-4' in checkpoint_data:
+                start_epoch = checkpoint_data['epoch'] + 1  # Start from the next epoch
+                best_bleu4 = checkpoint_data['bleu-4']
+                print(f"Resuming from epoch {start_epoch}, best BLEU-4: {best_bleu4:.4f}")
+            
+                # Try to load metrics data
+                metrics_file = os.path.join('model_outputs', f'a2c_metrics_{data_name}.json')
+                if os.path.exists(metrics_file):
+                    with open(metrics_file, 'r') as f:
+                        metrics_data = json.load(f)
+                    
+                    actor_losses = metrics_data.get('actor_loss', [])
+                    critic_losses = metrics_data.get('critic_loss', [])
+                    train_bleu_scores = metrics_data.get('train_bleu', [])
+                    val_bleu_scores = metrics_data.get('val_bleu', [])
+                    
+                    print(f"Loaded metrics from {metrics_file}")
+                    
+                    # Sanity check: number of epochs should match
+                    expected_epochs = checkpoint_data['epoch'] + 1
+                    if len(actor_losses) != expected_epochs:
+                        print(f"Warning: Expected {expected_epochs} epochs in metrics, but found {len(actor_losses)}")
+                        # Continue anyway with what we have
+            else:
+                print("Checkpoint does not contain epoch info, starting from epoch 0")
+        except Exception as e:
+            print(f"Error loading metrics, starting from epoch 0: {e}")
+            start_epoch = 0
+    
     # Training loop
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, start_epoch + epochs):
         if epochs_since_improvement == 10:
             print("No improvement for 10 epochs. Stopping training.")
             break
@@ -745,8 +817,29 @@ def save_a2c_metrics(data_name, epoch, actor_losses, critic_losses, train_bleu_s
     
     metrics_file = os.path.join(output_dir, f'a2c_metrics_{data_name}.json')
     
-    # Create epochs array (1-indexed for readability)
-    epochs = list(range(1, epoch + 2))
+    # Create epochs array based on the actual number of completed epochs
+    # This handles cases where training might be resumed from different points
+    num_epochs = len(actor_losses)
+    if num_epochs == 0:
+        print("Warning: No metrics to save")
+        return
+        
+    # Create epochs array starting from the last epoch minus the number of recorded metrics
+    # This ensures that if we're resuming training, the epoch numbers will be continuous
+    start_epoch = epoch - num_epochs + 1
+    epochs = list(range(start_epoch, epoch + 1))
+    
+    # Ensure all metrics arrays have the same length
+    min_len = min(len(epochs), len(actor_losses), len(critic_losses), 
+                 len(train_bleu_scores), len(val_bleu_scores))
+    
+    if min_len < num_epochs:
+        print(f"Warning: Some metrics arrays have different lengths. Trimming to {min_len} elements.")
+        epochs = epochs[-min_len:]
+        actor_losses = actor_losses[-min_len:]
+        critic_losses = critic_losses[-min_len:]
+        train_bleu_scores = train_bleu_scores[-min_len:]
+        val_bleu_scores = val_bleu_scores[-min_len:]
     
     # Save metrics with epoch numbers
     metrics_data = {
@@ -798,6 +891,8 @@ def main():
     parser.add_argument('--epochs', default=20, type=int, help='number of epochs')
     parser.add_argument('--checkpoint', default='model_outputs/BEST_flickr8k_5_5.pth.tar', help='checkpoint to resume from')
     parser.add_argument('--fine_tune_encoder', action='store_true', help='fine-tune encoder')
+    parser.add_argument('--freeze_encoder', action='store_true', help='completely freeze encoder (overrides fine_tune_encoder)')
+    parser.add_argument('--resume', action='store_true', help='resume training from the A2C checkpoint')
     parser.add_argument('--workers', default=0, type=int, help='number of workers for data loading')
     args = parser.parse_args()
     
@@ -809,7 +904,9 @@ def main():
         epochs=args.epochs,
         checkpoint=args.checkpoint,
         fine_tune_encoder=args.fine_tune_encoder,
-        workers=args.workers
+        freeze_encoder=args.freeze_encoder,
+        workers=args.workers,
+        resume_training=args.resume
     )
 
 
