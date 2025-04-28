@@ -199,7 +199,7 @@ class A2CImageCaptioning:
                 self.critic = checkpoint_data['critic'].to(device)
             else:
                 # Initialize new critic for regular checkpoints
-                self.critic = HybridCriticNetwork(decoder_dim).to(device)
+                self.critic = CriticNetwork(decoder_dim).to(device)
         else:
             # Initialize encoder and decoder from scratch (unlikely to be used, but included for completeness)
             print("Initializing new encoder and decoder models")
@@ -225,7 +225,7 @@ class A2CImageCaptioning:
             ).to(device)
             
             # Initialize critic
-            self.critic = HybridCriticNetwork(decoder_dim).to(device)
+            self.critic = CriticNetwork(decoder_dim).to(device)
         
         # Set fine-tuning mode
         self.encoder.fine_tune(fine_tune_encoder)
@@ -851,12 +851,12 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
     
     # Training loop
     for epoch in range(start_epoch, start_epoch + epochs):
-        if epochs_since_improvement == 10:
+        if epochs_since_improvement == 50:
             print("No improvement for 10 epochs. Stopping training.")
             break
             
         # Adjust learning rates if necessary
-        if epochs_since_improvement > 0 and epochs_since_improvement % 5 == 0:
+        if epochs_since_improvement > 0 and epochs_since_improvement % 10 == 0:
             for optimizer in [model.actor_optimizer, model.critic_optimizer]:
                 adjust_learning_rate(optimizer, 0.8)
             if model.encoder_optimizer is not None:
