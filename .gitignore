@@ -19,3 +19,6 @@ build/
 visualize_model.py
 visualizations/
 *.png
+
+# Jupyter Notebook checkpoints
+notebook.ipynb
