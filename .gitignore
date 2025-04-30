@@ -21,4 +21,6 @@ visualizations/
 *.png
 
 # Jupyter Notebook checkpoints
-notebook.ipynb
+notbook.ipynb
+notbook.ipynb_checkpoints
+*.ipynb_checkpoints
