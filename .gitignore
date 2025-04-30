@@ -1,26 +1,31 @@
-# Data directories
+# Data and model directories
 data/flickr8k/
 data/flickr30k/
 data_output/
 model_outputs/
 visualizations/
 
-# Byte-compiled Python files
+# Python bytecode files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Distribution / packaging
+# Distribution/packaging
 dist/
 build/
 *.egg-info/
 
-# Visualization script and outputs
+# Jupyter Notebook files
+notebook.ipynb
+notbook.ipynb
+*.ipynb
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Visualization files
 visualize_model.py
 visualizations/
 *.png
 
-# Jupyter Notebook checkpoints
-notbook.ipynb
-notbook.ipynb_checkpoints
-*.ipynb_checkpoints
+# Batch files
+*.bat

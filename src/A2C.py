@@ -1,8 +1,10 @@
-### 
-# Added new critic network that combines CNN image features and decoder hidden state features
-# to predict the expected reward for an image-caption pair.
-#Change CriticNetwork to HybridCriticNetwork 
-###
+"""
+A2C (Advantage Actor-Critic) Image Captioning Implementation.
+
+This module implements an A2C-based image captioning model that uses a hybrid critic network
+which combines CNN image features and decoder hidden state features to predict rewards.
+The hybrid approach enables better value estimation for the A2C algorithm.
+"""
 
 import time
 import torch.backends.cudnn as cudnn
@@ -19,112 +21,94 @@ from tqdm import tqdm
 import argparse
 import os
 import numpy as np
-import sys  # Add sys import
-import matplotlib.pyplot as plt  # Add matplotlib for plotting metrics
+import sys
+import matplotlib.pyplot as plt
 import json
+import math
 
-data_folder = 'data_output'  # files saved by create_input_files.py
-data_name = 'flickr8k_5_5'  # base name shared by data files
-
-checkpoint = 'model_outputs/BEST_flickr8k_5_5.pth.tar'  # model checkpoint
-
-# A2C (Advantage Actor-Critic) hyperparameters
+# A2C hyperparameters
 critic_lr = 1e-4
 actor_lr = 5e-5
-entropy_weight = 0.05  # Weight for the entropy regularization term
-value_loss_weight = 0.2  # Weight for the value loss term
-gamma = 0.99  # Discount factor
-max_grad_norm = 5.0  # For gradient clipping
+entropy_weight = 0.05
+value_loss_weight = 0.2
+gamma = 0.99
+max_grad_norm = 5.0
 
-
-class CriticNetwork(nn.Module):
-    """
-    Critic network for the A2C model.
-    Predicts the value (expected reward) of a state.
-    Takes features from the actor's decoder and predicts the expected future reward.
-    """
-    def __init__(self, input_dim, hidden_dim=256):
-        """
-        :param input_dim: dimension of input features (should match decoder's output dimension)
-        :param hidden_dim: dimension of hidden layer
-        """
-        super(CriticNetwork, self).__init__()
-        
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.fc3 = nn.Linear(hidden_dim // 2, 1)
-        
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.3)
-        
-        # Initialize weights
-        for layer in [self.fc1, self.fc2, self.fc3]:
-            nn.init.xavier_uniform_(layer.weight)
-            nn.init.constant_(layer.bias, 0)
-    
-    def forward(self, features):
-        """
-        Forward pass through the critic network
-        :param features: features from the decoder (batch_size, feature_dim)
-        :return: predicted state value (batch_size, 1)
-        """
-        x = self.relu(self.fc1(features))
-        x = self.dropout(x)
-        x = self.relu(self.fc2(x))
-        x = self.dropout(x)
-        value = self.fc3(x)
-        return value
-
-#Hybrid critic network (combines CNN and LSTM features)
 
 class HybridCriticNetwork(nn.Module):
     """
     Critic network that combines CNN image features and decoder hidden state features
     to predict the expected reward for an image-caption pair.
     """
-    def __init__(self, img_channels=512, decoder_dim=512, hidden_dim=256):
+    def __init__(self, img_channels=512, decoder_dim=512, hidden_dim=512, encoded_image_size=14):
         super(HybridCriticNetwork, self).__init__()
+        self.encoded_image_size = encoded_image_size
 
         # Convolutional branch for image features
         self.conv1 = nn.Conv2d(img_channels, 256, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(256)
         self.conv2 = nn.Conv2d(256, 128, kernel_size=3, padding=1)
-        self.pool = nn.AdaptiveAvgPool2d((1, 1))  # Output: (batch_size, 128, 1, 1)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
 
         # Fully connected layers
         self.fc_img = nn.Linear(128, hidden_dim // 2)
+        self.bn_img = nn.BatchNorm1d(hidden_dim // 2)
         self.fc_dec = nn.Linear(decoder_dim, hidden_dim // 2)
+        self.bn_dec = nn.BatchNorm1d(hidden_dim // 2)
         self.fc_combined = nn.Linear(hidden_dim, hidden_dim)
+        self.bn_combined = nn.BatchNorm1d(hidden_dim)
         self.output_layer = nn.Linear(hidden_dim, 1)
 
-        self.dropout = nn.Dropout(0.3)
+        self.dropout = nn.Dropout(0.4)
         self.relu = nn.ReLU()
 
         # Init weights
         for layer in [self.conv1, self.conv2]:
-            nn.init.kaiming_normal_(layer.weight)
+            nn.init.kaiming_normal_(layer.weight, mode='fan_out', nonlinearity='relu')
             nn.init.constant_(layer.bias, 0)
-        for layer in [self.fc_img, self.fc_dec, self.fc_combined, self.output_layer]:
+        for layer in [self.fc_img, self.fc_dec, self.fc_combined]:
             nn.init.xavier_uniform_(layer.weight)
             nn.init.constant_(layer.bias, 0)
+        # Special initialization for the output layer
+        nn.init.xavier_uniform_(self.output_layer.weight, gain=0.01)
+        nn.init.constant_(self.output_layer.bias, 0)
 
     def forward(self, img_feats, decoder_feats):
         """
-        :param img_feats: CNN feature map (batch_size, img_channels, H, W)
+        :param img_feats: CNN feature map (batch_size, img_channels, H, W) 
+                         or flattened (batch_size, num_pixels, encoder_dim)
         :param decoder_feats: decoder hidden state (batch_size, decoder_dim)
         :return: scalar value for each state (batch_size, 1)
         """
+        batch_size = img_feats.size(0)
+        
+        # Check and reshape image features if needed
+        if len(img_feats.shape) == 3:
+            # If flattened input, reshape to 2D spatial
+            num_pixels = img_feats.size(1)
+            encoder_dim = img_feats.size(2)
+            
+            # Calculate spatial dimensions (assuming square feature maps)
+            img_size = int(math.sqrt(num_pixels))
+            
+            # Reshape to proper format for convolution
+            img_feats = img_feats.view(batch_size, num_pixels, encoder_dim)
+            img_feats = img_feats.permute(0, 2, 1)
+            img_feats = img_feats.view(batch_size, encoder_dim, img_size, img_size)
+        
         # Image path
-        x_img = self.relu(self.conv1(img_feats))
-        x_img = self.relu(self.conv2(x_img))
-        x_img = self.pool(x_img).squeeze(-1).squeeze(-1)  # -> (batch_size, 128)
-        x_img = self.relu(self.fc_img(x_img))
+        x_img = self.relu(self.bn1(self.conv1(img_feats)))
+        x_img = self.relu(self.bn2(self.conv2(x_img)))
+        x_img = self.pool(x_img).squeeze(-1).squeeze(-1)
+        x_img = self.relu(self.bn_img(self.fc_img(x_img)))
 
         # Decoder path
-        x_dec = self.relu(self.fc_dec(decoder_feats))
+        x_dec = self.relu(self.bn_dec(self.fc_dec(decoder_feats)))
 
         # Combine both
         x = torch.cat([x_img, x_dec], dim=1)
-        x = self.relu(self.fc_combined(x))
+        x = self.relu(self.bn_combined(self.fc_combined(x)))
         x = self.dropout(x)
         value = self.output_layer(x)
         return value
@@ -135,7 +119,8 @@ class A2CImageCaptioning:
                  encoder_lr=1e-5, decoder_lr=1e-4, critic_lr=1e-4, 
                  entropy_weight=0.01, value_loss_weight=0.5, gamma=0.99,
                  checkpoint=None, fine_tune_encoder=False,
-                 beam_size=5, temperature=1.0):
+                 beam_size=5, temperature=1.0,
+                 reward_scale=1.0):
         """
         Initialize the A2C Image Captioning model
         :param word_map: dictionary mapping words to indices
@@ -150,6 +135,7 @@ class A2CImageCaptioning:
         :param fine_tune_encoder: whether to fine-tune the encoder
         :param beam_size: beam size for beam search decoding
         :param temperature: temperature for sampling
+        :param reward_scale: factor to scale rewards for better training dynamics
         """
         self.device = device
         self.word_map = word_map
@@ -161,11 +147,15 @@ class A2CImageCaptioning:
         self.value_loss_weight = value_loss_weight
         self.beam_size = beam_size
         self.temperature = temperature
+        self.reward_scale = reward_scale
         
         # Special tokens
         self.start_token = word_map['<start>']
         self.end_token = word_map['<end>']
         self.pad_token = word_map['<pad>']
+        
+        # Flag to indicate which critic network we're using
+        self.using_hybrid_critic = True
         
         # Load or initialize the model
         if checkpoint is not None:
@@ -197,11 +187,15 @@ class A2CImageCaptioning:
             # Initialize or load critic
             if is_a2c_checkpoint:
                 self.critic = checkpoint_data['critic'].to(device)
+                # Check if the loaded critic is HybridCriticNetwork
+                self.using_hybrid_critic = isinstance(self.critic, HybridCriticNetwork)
+                print(f"Using {'Hybrid' if self.using_hybrid_critic else 'Standard'} Critic Network")
             else:
                 # Initialize new critic for regular checkpoints
-                self.critic = CriticNetwork(decoder_dim).to(device)
+                print("Initializing new HybridCriticNetwork")
+                self.critic = HybridCriticNetwork(img_channels=encoder_dim, decoder_dim=decoder_dim).to(device)
         else:
-            # Initialize encoder and decoder from scratch (unlikely to be used, but included for completeness)
+            # Initialize encoder and decoder from scratch
             print("Initializing new encoder and decoder models")
             is_a2c_checkpoint = False
             encoder_dim = 512  # Default for ResNet34
@@ -225,13 +219,13 @@ class A2CImageCaptioning:
             ).to(device)
             
             # Initialize critic
-            self.critic = CriticNetwork(decoder_dim).to(device)
+            print("Initializing new HybridCriticNetwork")
+            self.critic = HybridCriticNetwork(img_channels=encoder_dim, decoder_dim=decoder_dim).to(device)
         
         # Set fine-tuning mode
         self.encoder.fine_tune(fine_tune_encoder)
         
         # Setup optimizers
-        # The actor is the decoder (which generates captions)
         self.actor_optimizer = optim.Adam(
             params=filter(lambda p: p.requires_grad, self.decoder.parameters()),
             lr=decoder_lr
@@ -471,7 +465,21 @@ class A2CImageCaptioning:
         seq_length = hidden_states.size(1)
         
         # 3. Compute critic values for each step of each sequence
-        values = self.critic(hidden_states.view(-1, hidden_states.size(-1))).view(batch_size, seq_length)
+        # For HybridCriticNetwork, we need to pass both image features and decoder hidden states
+        if self.using_hybrid_critic:
+            # Batch process all time steps together for efficiency
+            values = torch.zeros(batch_size, seq_length, device=self.device)
+            
+            for t in range(seq_length):
+                # Get the hidden states for this time step
+                h_t = hidden_states[:, t, :]  # (batch_size, hidden_dim)
+                
+                # Pass encoder output and hidden state to the critic
+                # The critic will reshape tensor appropriately
+                values[:, t:t+1] = self.critic(encoder_out, h_t)
+        else:
+            # Original code for standard critic (if we need backward compatibility)
+            values = self.critic(hidden_states.view(-1, hidden_states.size(-1))).view(batch_size, seq_length)
         
         # 4. Compute rewards and advantages
         rewards = torch.zeros_like(values)  # Match dimensions with values tensor
@@ -522,11 +530,14 @@ class A2CImageCaptioning:
             bleu_scores.append(bleu4)
             all_rewards.append(reward)
             
+            # Scale reward to improve training dynamics
+            scaled_reward = reward * self.reward_scale
+            
             # Compute returns using the BLEU score as the final reward
-            sample_returns = self.compute_returns(reward, min(sample_length, seq_length))
+            sample_returns = self.compute_returns(scaled_reward, min(sample_length, seq_length))
             
             # Apply reward clipping to stabilize training
-            sample_returns = torch.clamp(sample_returns, min=-1.0, max=1.0)
+            sample_returns = torch.clamp(sample_returns, min=-2.0, max=2.0)
             
             # Fill in rewards for this sample
             rewards[i, :min(sample_length, seq_length)] = sample_returns
@@ -749,24 +760,70 @@ class A2CImageCaptioning:
             torch.save(state, best_filename)
 
 
+def save_a2c_metrics(data_name, epoch, actor_losses, critic_losses, train_bleu_scores, val_bleu_scores):
+    """
+    Save and plot A2C training metrics
+    """
+    output_dir = 'model_outputs'
+    os.makedirs(output_dir, exist_ok=True)
+    
+    metrics_file = os.path.join(output_dir, f'a2c_metrics_{data_name}.json')
+    
+    # Ensure all metrics arrays have the same length
+    min_len = min(len(actor_losses), len(critic_losses), len(train_bleu_scores), len(val_bleu_scores))
+    if min_len == 0:
+        print("Warning: No metrics to save")
+        return
+        
+    # Create epochs array
+    start_epoch = epoch - min_len + 1
+    epochs = list(range(start_epoch, epoch + 1))
+    
+    # Save metrics
+    metrics_data = {
+        'epochs': epochs,
+        'actor_loss': actor_losses[-min_len:],
+        'critic_loss': critic_losses[-min_len:],
+        'train_bleu': train_bleu_scores[-min_len:],
+        'val_bleu': val_bleu_scores[-min_len:]
+    }
+    
+    with open(metrics_file, 'w') as f:
+        json.dump(metrics_data, f)
+    
+    # Plot actor and critic losses
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, metrics_data['actor_loss'], marker='o', label='Actor Loss')
+    plt.plot(epochs, metrics_data['critic_loss'], marker='x', label='Critic Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title(f'A2C Actor and Critic Losses for {data_name}')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(os.path.join(output_dir, f'a2c_losses_{data_name}.png'))
+    plt.close()
+    
+    # Plot BLEU scores
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, metrics_data['train_bleu'], marker='o', label='Training BLEU')
+    plt.plot(epochs, metrics_data['val_bleu'], marker='x', label='Validation BLEU')
+    plt.xlabel('Epoch')
+    plt.ylabel('BLEU-4 Score')
+    plt.title(f'A2C BLEU Scores for {data_name}')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(os.path.join(output_dir, f'a2c_bleu_{data_name}.png'))
+    plt.close()
+    
+    print(f"A2C metrics saved to {metrics_file}")
+
+
 def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None, 
               fine_tune_encoder=False, freeze_encoder=False, workers=0, resume_training=False,
-              temperature=1.0, entropy_weight=0.05, entropy_annealing=True, value_loss_weight=0.2):
+              temperature=1.0, entropy_weight=0.05, entropy_annealing=True, value_loss_weight=0.2,
+              reward_scale=2.0):
     """
     Train the image captioning model with A2C
-    :param data_folder: folder with data files
-    :param data_name: base name shared by data files
-    :param batch_size: batch size
-    :param epochs: number of epochs
-    :param checkpoint: checkpoint to resume from
-    :param fine_tune_encoder: whether to fine-tune the encoder
-    :param freeze_encoder: whether to freeze the encoder completely (overrides fine_tune_encoder)
-    :param workers: number of workers for data loading
-    :param resume_training: whether to resume training from the checkpoint (load optimizer states and metrics)
-    :param temperature: temperature for exploration (higher values = more exploration)
-    :param entropy_weight: initial weight for entropy regularization
-    :param entropy_annealing: whether to apply annealing to entropy weight
-    :param value_loss_weight: weight for the value loss term
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cudnn.benchmark = True
@@ -789,7 +846,8 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
         fine_tune_encoder=fine_tune_encoder,
         entropy_weight=entropy_weight,
         value_loss_weight=value_loss_weight,
-        temperature=temperature
+        temperature=temperature,
+        reward_scale=reward_scale
     )
     
     # Data loaders
@@ -837,12 +895,6 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
                     val_bleu_scores = metrics_data.get('val_bleu', [])
                     
                     print(f"Loaded metrics from {metrics_file}")
-                    
-                    # Sanity check: number of epochs should match
-                    expected_epochs = checkpoint_data['epoch'] + 1
-                    if len(actor_losses) != expected_epochs:
-                        print(f"Warning: Expected {expected_epochs} epochs in metrics, but found {len(actor_losses)}")
-                        # Continue anyway with what we have
             else:
                 print("Checkpoint does not contain epoch info, starting from epoch 0")
         except Exception as e:
@@ -852,7 +904,7 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
     # Training loop
     for epoch in range(start_epoch, start_epoch + epochs):
         if epochs_since_improvement == 50:
-            print("No improvement for 10 epochs. Stopping training.")
+            print("No improvement for 50 epochs. Stopping training.")
             break
             
         # Adjust learning rates if necessary
@@ -898,84 +950,6 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
         save_a2c_metrics(data_name, epoch, actor_losses, critic_losses, train_bleu_scores, val_bleu_scores)
 
 
-def save_a2c_metrics(data_name, epoch, actor_losses, critic_losses, train_bleu_scores, val_bleu_scores):
-    """
-    Save and plot A2C training metrics
-    :param data_name: name of the dataset
-    :param epoch: current epoch number
-    :param actor_losses: list of actor losses
-    :param critic_losses: list of critic losses
-    :param train_bleu_scores: list of training BLEU scores
-    :param val_bleu_scores: list of validation BLEU scores
-    """
-    output_dir = 'model_outputs'
-    os.makedirs(output_dir, exist_ok=True)
-    
-    metrics_file = os.path.join(output_dir, f'a2c_metrics_{data_name}.json')
-    
-    # Create epochs array based on the actual number of completed epochs
-    # This handles cases where training might be resumed from different points
-    num_epochs = len(actor_losses)
-    if num_epochs == 0:
-        print("Warning: No metrics to save")
-        return
-        
-    # Create epochs array starting from the last epoch minus the number of recorded metrics
-    # This ensures that if we're resuming training, the epoch numbers will be continuous
-    start_epoch = epoch - num_epochs + 1
-    epochs = list(range(start_epoch, epoch + 1))
-    
-    # Ensure all metrics arrays have the same length
-    min_len = min(len(epochs), len(actor_losses), len(critic_losses), 
-                 len(train_bleu_scores), len(val_bleu_scores))
-    
-    if min_len < num_epochs:
-        print(f"Warning: Some metrics arrays have different lengths. Trimming to {min_len} elements.")
-        epochs = epochs[-min_len:]
-        actor_losses = actor_losses[-min_len:]
-        critic_losses = critic_losses[-min_len:]
-        train_bleu_scores = train_bleu_scores[-min_len:]
-        val_bleu_scores = val_bleu_scores[-min_len:]
-    
-    # Save metrics with epoch numbers
-    metrics_data = {
-        'epochs': epochs,
-        'actor_loss': actor_losses,
-        'critic_loss': critic_losses,
-        'train_bleu': train_bleu_scores,
-        'val_bleu': val_bleu_scores
-    }
-    
-    with open(metrics_file, 'w') as f:
-        json.dump(metrics_data, f)
-    
-    # Plot actor and critic losses
-    plt.figure(figsize=(10, 5))
-    plt.plot(epochs, actor_losses, marker='o', label='Actor Loss')
-    plt.plot(epochs, critic_losses, marker='x', label='Critic Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title(f'A2C Actor and Critic Losses for {data_name}')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(os.path.join(output_dir, f'a2c_losses_{data_name}.png'))
-    plt.close()
-    
-    # Plot BLEU scores
-    plt.figure(figsize=(10, 5))
-    plt.plot(epochs, train_bleu_scores, marker='o', label='Training BLEU')
-    plt.plot(epochs, val_bleu_scores, marker='x', label='Validation BLEU')
-    plt.xlabel('Epoch')
-    plt.ylabel('BLEU-4 Score')
-    plt.title(f'A2C BLEU Scores for {data_name}')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(os.path.join(output_dir, f'a2c_bleu_{data_name}.png'))
-    plt.close()
-    
-    print(f"A2C metrics saved to {metrics_file}")
-
-
 def main():
     """
     Main function
@@ -994,6 +968,7 @@ def main():
     parser.add_argument('--entropy_weight', default=0.05, type=float, help='weight for entropy regularization term')
     parser.add_argument('--value_loss_weight', default=0.2, type=float, help='weight for value loss term')
     parser.add_argument('--no_entropy_annealing', action='store_true', help='disable entropy weight annealing')
+    parser.add_argument('--reward_scale', default=2.0, type=float, help='factor to scale rewards for better training dynamics')
     args = parser.parse_args()
     
     # Train with A2C
@@ -1010,7 +985,8 @@ def main():
         temperature=args.temperature,
         entropy_weight=args.entropy_weight,
         entropy_annealing=not args.no_entropy_annealing,
-        value_loss_weight=args.value_loss_weight
+        value_loss_weight=args.value_loss_weight,
+        reward_scale=args.reward_scale
     )
 
 
