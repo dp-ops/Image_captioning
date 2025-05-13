@@ -1,3 +1,5 @@
+#This repo is made for a project in Deep Learning and Multimedia Data Analysis in MCS Artificial Inteligence of Aistotle University of Thessaloniki.
+
 # ResNet LSTM Image Captioning
 
 This document provides a comprehensive guide to the ResNet34-LSTM image captioning model, including architecture details, training instructions, and troubleshooting tips.
@@ -118,7 +120,7 @@ create_input_data(
 
 Modify these parameters in the script if you're using a different dataset or want to change the configuration:
 - `dataset`: Choose from 'flickr8k', 'flickr30k', or 'coco'
-- `json_path`: Path to Karpathy's JSON file
+- `json_path`: Path to JSON file
 - `image_folder`: Directory containing the images
 - `captions_per_image`: Number of captions to use per image
 - `min_word_freq`: Minimum frequency for a word to be included in vocabulary
@@ -355,7 +357,7 @@ Required arguments:
 Optional arguments:
 - `--beam_size` or `-b`: Size of beam search (default is 5)
 - `--visualize_attention` or `-v`: Add this flag to visualize attention weights for each word
-- `--captions_json` or `-cj`: Path to the original captions JSON file (Karpathy's format) to display original captions alongside generated ones
+- `--captions_json` or `-cj`: Path to the original captions JSON file to display original captions alongside generated ones
 
 The script will:
 1. Load the specified model and word map
