@@ -13,9 +13,17 @@ from torch import optim, nn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch.nn.utils.rnn import pack_padded_sequence
-from src.model import EncoderCNN, LSTMDecoderWithAttention
-from src.dataset import *
-from src.utils import *
+# Handle imports for both src/ and parent directory execution
+try:
+    # When run from parent directory
+    from src.model import EncoderCNN, LSTMDecoderWithAttention
+    from src.dataset import *
+    from src.utils import *
+except ImportError:
+    # When run from src directory
+    from model import EncoderCNN, LSTMDecoderWithAttention
+    from dataset import *
+    from utils import *
 from nltk.translate.bleu_score import corpus_bleu, sentence_bleu
 from tqdm import tqdm
 import argparse
@@ -33,6 +41,51 @@ entropy_weight = 0.05
 value_loss_weight = 0.2
 gamma = 0.99
 max_grad_norm = 5.0
+
+
+entropy_weight = 0.05  # Weight for the entropy regularization term
+value_loss_weight = 0.2  # Weight for the value loss term
+gamma = 0.99  # Discount factor
+max_grad_norm = 5.0  # For gradient clipping
+
+
+# class CriticNetwork(nn.Module):
+#     """
+#     Critic network for the A2C model.
+#     Predicts the value (expected reward) of a state.
+#     Takes features from the actor's decoder and predicts the expected future reward.
+#     """
+#     def __init__(self, input_dim, hidden_dim=256):
+#         """
+#         :param input_dim: dimension of input features (should match decoder's output dimension)
+#         :param hidden_dim: dimension of hidden layer
+#         """
+#         super(CriticNetwork, self).__init__()
+        
+#         self.fc1 = nn.Linear(input_dim, hidden_dim)
+#         self.fc2 = nn.Linear(hidden_dim, hidden_dim // 2)
+#         self.fc3 = nn.Linear(hidden_dim // 2, 1)
+        
+#         self.relu = nn.ReLU()
+#         self.dropout = nn.Dropout(0.3)
+        
+#         # Initialize weights
+#         for layer in [self.fc1, self.fc2, self.fc3]:
+#             nn.init.xavier_uniform_(layer.weight)
+#             nn.init.constant_(layer.bias, 0)
+    
+#     def forward(self, features):
+#         """
+#         Forward pass through the critic network
+#         :param features: features from the decoder (batch_size, feature_dim)
+#         :return: predicted state value (batch_size, 1)
+#         """
+#         x = self.relu(self.fc1(features))
+#         x = self.dropout(x)
+#         x = self.relu(self.fc2(x))
+#         x = self.dropout(x)
+#         value = self.fc3(x)
+#         return value
 
 
 class HybridCriticNetwork(nn.Module):
@@ -950,11 +1003,194 @@ def a2c_train(data_folder, data_name, batch_size=32, epochs=20, checkpoint=None,
         save_a2c_metrics(data_name, epoch, actor_losses, critic_losses, train_bleu_scores, val_bleu_scores)
 
 
+def a2c_evaluate(data_folder, data_name, checkpoint, num_samples=5, temperature=1.0, max_length=20):
+    """
+    Evaluate A2C model on test set
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cudnn.benchmark = True
+    
+    # Load word map
+    word_map_file = os.path.join(data_folder, 'WORDMAP_' + data_name + '.json')
+    with open(word_map_file, 'r') as j:
+        word_map = json.load(j)
+    
+    rev_word_map = {v: k for k, v in word_map.items()}
+    
+    # Initialize the A2C model (this handles checkpoint loading properly)
+    model = A2CImageCaptioning(
+        word_map=word_map,
+        device=device,
+        checkpoint=checkpoint,
+        fine_tune_encoder=False,
+        temperature=temperature
+    )
+    
+    # Data loader
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    test_loader = DataLoader(
+        CaptionDataset(data_folder, data_name, 'TEST', transform=transforms.Compose([normalize])),
+        batch_size=1, shuffle=False, num_workers=0, pin_memory=True
+    )
+    
+    print(f"Evaluating A2C model on {len(test_loader)} test images...")
+    print(f"Using {num_samples} samples per image with temperature {temperature}")
+    
+    # Evaluation
+    references = []
+    hypotheses = []
+    sample_results = []
+    
+    start_time = time.time()
+    
+    with torch.no_grad():
+        for i, batch in enumerate(tqdm(test_loader, desc="A2C Test Evaluation")):
+            if len(batch) == 4:
+                image, caption, caplen, allcaps = batch
+            else:
+                image, caption, caplen = batch
+                allcaps = None
+            
+            image = image.to(device)
+            if allcaps is not None:
+                allcaps = allcaps.to(device)
+            
+            # Get image features
+            encoder_out = model.encoder(image)
+            
+            # Generate multiple samples and pick the best
+            best_sample = None
+            best_score = -float('inf')
+            all_samples = []
+            
+            for _ in range(num_samples):
+                # Generate caption using sampling
+                samples, log_probs, _, _ = model.generate_caption_with_sampling(encoder_out, max_length=max_length)
+                
+                # Convert to words
+                sample_tokens = samples[0].tolist()
+                
+                # Find end token
+                try:
+                    end_idx = sample_tokens.index(word_map['<end>'])
+                    sample_tokens = sample_tokens[:end_idx]
+                except ValueError:
+                    pass
+                
+                # Convert to words
+                sample_words = []
+                for token in sample_tokens:
+                    if token in rev_word_map and token not in [word_map['<start>'], word_map['<pad>']]:
+                        sample_words.append(rev_word_map[token])
+                
+                all_samples.append(sample_words)
+                
+                # Score by log probability sum
+                valid_length = min(len(sample_tokens), log_probs.size(1))
+                if valid_length > 0:
+                    score = log_probs[0, :valid_length].sum().item()
+                    if score > best_score:
+                        best_score = score
+                        best_sample = sample_words
+            
+            hypotheses.append(best_sample if best_sample else [])
+            
+            # Get references
+            if allcaps is not None:
+                img_captions = []
+                for j in range(allcaps.size(1)):
+                    ref_tokens = allcaps[0, j].tolist()
+                    ref_words = [rev_word_map[token] for token in ref_tokens 
+                               if token in rev_word_map and token not in 
+                               [word_map['<start>'], word_map['<end>'], word_map['<pad>']] and token != 0]
+                    if ref_words:
+                        img_captions.append(ref_words)
+                references.append(img_captions)
+            else:
+                ref_tokens = caption[0, :caplen[0]].tolist()
+                ref_words = [rev_word_map[token] for token in ref_tokens 
+                           if token in rev_word_map and token not in 
+                           [word_map['<start>'], word_map['<end>'], word_map['<pad>']]]
+                references.append([ref_words])
+            
+            # Store sample for display
+            if i < 10:
+                sample_results.append({
+                    'image_index': i,
+                    'generated': ' '.join(best_sample) if best_sample else '',
+                    'all_samples': [' '.join(sample) for sample in all_samples],
+                    'reference': ' | '.join([' '.join(ref) for ref in references[-1]])
+                })
+    
+    # Calculate BLEU scores
+    print("\nCalculating BLEU scores...")
+    bleu1 = corpus_bleu(references, hypotheses, weights=(1, 0, 0, 0))
+    bleu2 = corpus_bleu(references, hypotheses, weights=(0.5, 0.5, 0, 0))
+    bleu3 = corpus_bleu(references, hypotheses, weights=(0.33, 0.33, 0.33, 0))
+    bleu4 = corpus_bleu(references, hypotheses, weights=(0.25, 0.25, 0.25, 0.25))
+    
+    total_time = time.time() - start_time
+    
+    # Results
+    results = {
+        'dataset': data_name,
+        'num_images': len(test_loader),
+        'num_samples_per_image': num_samples,
+        'temperature': temperature,
+        'bleu1': bleu1,
+        'bleu2': bleu2,
+        'bleu3': bleu3,
+        'bleu4': bleu4,
+        'total_time': total_time,
+        'sample_captions': sample_results
+    }
+    
+    # Save results
+    os.makedirs('evaluation_outputs', exist_ok=True)
+    results_file = f'evaluation_outputs/a2c_evaluation_results_{data_name}.json'
+    with open(results_file, 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    # Print results
+    print("\n" + "="*80)
+    print("A2C MODEL EVALUATION RESULTS")
+    print("="*80)
+    print(f"Dataset: {data_name}")
+    print(f"Number of test images: {len(test_loader)}")
+    print(f"Samples per image: {num_samples}")
+    print(f"Sampling temperature: {temperature}")
+    print("-"*80)
+    print("BLEU SCORES:")
+    print(f"  BLEU-1: {bleu1:.4f}")
+    print(f"  BLEU-2: {bleu2:.4f}")
+    print(f"  BLEU-3: {bleu3:.4f}")
+    print(f"  BLEU-4: {bleu4:.4f}")
+    print("-"*80)
+    print(f"Total evaluation time: {total_time:.2f} seconds")
+    print("="*80)
+    
+    # Sample results
+    if sample_results:
+        print("\nSAMPLE GENERATED CAPTIONS:")
+        print("-"*80)
+        for sample in sample_results[:5]:
+            print(f"Image {sample['image_index'] + 1}:")
+            print(f"  Generated: {sample['generated']}")
+            print(f"  Reference: {sample['reference']}")
+            print()
+    
+    print(f"Results saved to: {results_file}")
+    print(f"\nMain result: BLEU-4 = {bleu4:.4f}")
+    
+    return results
+
+
 def main():
     """
     Main function
     """
     parser = argparse.ArgumentParser(description='A2C Image Captioning')
+    parser.add_argument('--mode', default='train', choices=['train', 'eval'], help='mode: train or eval')
     parser.add_argument('--data_folder', default='data_output', help='folder with data files')
     parser.add_argument('--data_name', default='flickr8k_5_5', help='base name shared by data files')
     parser.add_argument('--batch_size', default=32, type=int, help='batch size')
@@ -969,25 +1205,52 @@ def main():
     parser.add_argument('--value_loss_weight', default=0.2, type=float, help='weight for value loss term')
     parser.add_argument('--no_entropy_annealing', action='store_true', help='disable entropy weight annealing')
     parser.add_argument('--reward_scale', default=2.0, type=float, help='factor to scale rewards for better training dynamics')
+    
+    # Evaluation specific arguments
+    parser.add_argument('--num_samples', default=5, type=int, help='number of samples per image for evaluation')
+    parser.add_argument('--max_length', default=20, type=int, help='maximum caption length for evaluation')
+    
     args = parser.parse_args()
     
-    # Train with A2C
-    a2c_train(
-        data_folder=args.data_folder,
-        data_name=args.data_name,
-        batch_size=args.batch_size,
-        epochs=args.epochs,
-        checkpoint=args.checkpoint,
-        fine_tune_encoder=args.fine_tune_encoder,
-        freeze_encoder=args.freeze_encoder,
-        workers=args.workers,
-        resume_training=args.resume,
-        temperature=args.temperature,
-        entropy_weight=args.entropy_weight,
-        entropy_annealing=not args.no_entropy_annealing,
-        value_loss_weight=args.value_loss_weight,
-        reward_scale=args.reward_scale
-    )
+    if args.mode == 'eval':
+        # Use A2C checkpoint for evaluation
+        a2c_checkpoint = f'model_outputs/a2c_BEST_{args.data_name}.pth.tar'
+        if not os.path.exists(a2c_checkpoint):
+            print(f"A2C checkpoint not found: {a2c_checkpoint}")
+            print("Available A2C checkpoints:")
+            if os.path.exists('model_outputs'):
+                a2c_files = [f for f in os.listdir('model_outputs') if f.startswith('a2c_') and f.endswith('.pth.tar')]
+                for f in sorted(a2c_files):
+                    print(f"  {f}")
+            return
+        
+        # Evaluate with A2C
+        a2c_evaluate(
+            data_folder=args.data_folder,
+            data_name=args.data_name,
+            checkpoint=a2c_checkpoint,
+            num_samples=args.num_samples,
+            temperature=args.temperature,
+            max_length=args.max_length
+        )
+    else:
+        # Train with A2C
+        a2c_train(
+            data_folder=args.data_folder,
+            data_name=args.data_name,
+            batch_size=args.batch_size,
+            epochs=args.epochs,
+            checkpoint=args.checkpoint,
+            fine_tune_encoder=args.fine_tune_encoder,
+            freeze_encoder=args.freeze_encoder,
+            workers=args.workers,
+            resume_training=args.resume,
+            temperature=args.temperature,
+            entropy_weight=args.entropy_weight,
+            entropy_annealing=not args.no_entropy_annealing,
+            value_loss_weight=args.value_loss_weight,
+            reward_scale=args.reward_scale
+        )
 
 
 if __name__ == '__main__':

@@ -1,0 +1,13 @@
+{
+  "bleu1": 0.6545390641703367,
+  "bleu2": 0.37029328426287883,
+  "bleu3": 0.1652310386536216,
+  "bleu4": 0.07670972924342324,
+  "avg_sentence_bleu": 0.0895295197831147,
+  "std_sentence_bleu": 0.06600495852034803,
+  "num_images": 5000,
+  "num_samples_per_image": 5,
+  "temperature": 0.5,
+  "total_time": 727.3006896972656,
+  "avg_time_per_image": 0.1433405090332031
+}
