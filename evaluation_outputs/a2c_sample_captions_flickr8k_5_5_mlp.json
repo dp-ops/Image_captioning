@@ -3,70 +3,71 @@
     "image_index": 0,
     "generated_captions": [
       [
-        "females",
-        "and",
+        "<unk>",
+        "examine",
+        "paw",
         "a",
-        "a",
+        "brown",
         "dog",
         "is",
         "in",
         "the"
       ],
       [
-        "bleachers",
-        "with",
+        "wrestlers",
+        "ribbons",
         "a",
-        "a",
+        "black",
         "dog",
         "is",
         "in",
         "the"
       ],
       [
-        "view",
-        "with",
-        "on",
+        "leg",
+        "smoke",
+        "gown",
         "a",
-        "a",
+        "brown",
         "dog",
-        "are",
+        "is",
         "in",
         "the"
       ],
       [
-        "turned",
+        "suit",
+        "huge",
+        "a",
+        "brown",
+        "dog",
+        "in",
         "the",
-        "a",
-        "a",
-        "dog",
-        "are",
-        "in",
-        "the"
+        "themed"
       ],
       [
-        "tire",
-        "and",
-        "on",
+        "boat",
+        "taking",
+        "hood",
         "a",
-        "a",
+        "black",
         "dog",
-        "are",
         "in",
-        "the"
+        "the",
+        "neighborhood"
       ]
     ],
     "caption_scores": [
-      -12.269004821777344,
-      -10.863214492797852,
-      -16.518661499023438,
-      -12.358779907226562,
-      -13.54661750793457
+      -25.480066299438477,
+      -18.2789363861084,
+      -25.728313446044922,
+      -28.339792251586914,
+      -36.44284439086914
     ],
     "best_caption": [
-      "bleachers",
-      "with",
+      "wrestlers",
+      "ribbons",
       "a",
-      "a",
+      "black",
       "dog",
       "is",
       "in",
@@ -122,60 +123,65 @@
         "fence"
       ]
     ],
-    "best_caption_text": "bleachers with a a dog is in the",
+    "best_caption_text": "wrestlers ribbons a black dog is in the",
     "reference_text": "two brown dogs wrestle in the snow | two dogs playing in the snow | the dogs play on the snow | two brown dogs playfully fight in the snow | the dogs are in the snow in front of a fence"
   },
   {
     "image_index": 1,
     "generated_captions": [
       [
-        "six",
-        "with",
+        "beam",
+        "public",
+        "harbor",
         "a",
-        "a",
+        "brown",
         "dog",
-        "is",
         "in",
-        "the"
-      ],
-      [
-        "long",
-        "and",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "are",
-        "in",
-        "the"
-      ],
-      [
-        "trampoline",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "soaked",
         "the",
-        "on",
+        "big"
+      ],
+      [
+        "serve",
+        "dunking",
+        "blows",
         "a",
+        "brown",
+        "dog",
+        "is",
+        "playing",
+        "in",
+        "the",
+        "swing"
+      ],
+      [
+        "speeds",
+        "rink",
+        "pushing",
         "a",
+        "brown",
         "dog",
         "is",
         "in",
         "the"
       ],
       [
-        "sharp",
-        "and",
-        "on",
+        "pants",
+        "brown",
+        "goal",
         "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "the"
+      ],
+      [
+        "bearing",
+        "neck",
+        "time",
+        "strings",
         "a",
+        "black",
         "dog",
         "is",
         "in",
@@ -183,17 +189,18 @@
       ]
     ],
     "caption_scores": [
-      -10.297882080078125,
-      -12.698685646057129,
-      -8.750895500183105,
-      -11.921366691589355,
-      -12.63911247253418
+      -34.47404861450195,
+      -43.850738525390625,
+      -25.632875442504883,
+      -23.312305450439453,
+      -32.71914291381836
     ],
     "best_caption": [
-      "trampoline",
-      "on",
+      "pants",
+      "brown",
+      "goal",
       "a",
-      "a",
+      "brown",
       "dog",
       "is",
       "in",
@@ -249,76 +256,82 @@
         "fence"
       ]
     ],
-    "best_caption_text": "trampoline on a a dog is in the",
+    "best_caption_text": "pants brown goal a brown dog is in the",
     "reference_text": "two brown dogs wrestle in the snow | two dogs playing in the snow | the dogs play on the snow | two brown dogs playfully fight in the snow | the dogs are in the snow in front of a fence"
   },
   {
     "image_index": 2,
     "generated_captions": [
       [
-        "quickly",
-        "the",
-        "on",
-        "a",
-        "a",
-        "dogs",
         "is",
-        "in",
-        "the"
-      ],
-      [
-        "hula",
-        "on",
+        "parking",
+        "haircut",
         "a",
-        "a",
+        "brown",
         "dog",
         "is",
         "in",
         "the"
       ],
       [
-        "cycling",
-        "with",
+        "chainsaw",
+        "rolling",
+        "motorcyclist",
         "a",
-        "a",
-        "dogs",
-        "are",
-        "in",
-        "the"
-      ],
-      [
-        "jump",
-        "on",
-        "a",
-        "a",
+        "brown",
         "dog",
-        "are",
+        "is",
         "in",
         "the"
       ],
       [
+        "pony",
+        "defending",
         "stretching",
-        "on",
         "a",
-        "a",
+        "brown",
         "dog",
         "is",
         "in",
+        "the",
+        "buy"
+      ],
+      [
+        "greyhounds",
+        "bike",
+        "squats",
+        "toy",
+        "a",
+        "black",
+        "dog",
+        "in",
         "the"
+      ],
+      [
+        "cow",
+        "merry",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "the",
+        "goal"
       ]
     ],
     "caption_scores": [
-      -14.636981964111328,
-      -8.177118301391602,
-      -14.301420211791992,
-      -9.848977088928223,
-      -8.912822723388672
+      -23.609432220458984,
+      -26.093921661376953,
+      -33.30615997314453,
+      -36.018333435058594,
+      -26.158294677734375
     ],
     "best_caption": [
-      "hula",
-      "on",
+      "is",
+      "parking",
+      "haircut",
       "a",
-      "a",
+      "brown",
       "dog",
       "is",
       "in",
@@ -374,76 +387,78 @@
         "fence"
       ]
     ],
-    "best_caption_text": "hula on a a dog is in the",
+    "best_caption_text": "is parking haircut a brown dog is in the",
     "reference_text": "two brown dogs wrestle in the snow | two dogs playing in the snow | the dogs play on the snow | two brown dogs playfully fight in the snow | the dogs are in the snow in front of a fence"
   },
   {
     "image_index": 3,
     "generated_captions": [
       [
-        "making",
+        "clearing",
+        "skiers",
+        "wings",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "the"
+      ],
+      [
+        "hand",
+        "plain",
+        "a",
+        "black",
+        "dog",
+        "is",
+        "in",
+        "the"
+      ],
+      [
+        "cone",
+        "turned",
+        "twin",
+        "a",
+        "black",
+        "dog",
+        "in",
         "the",
-        "on",
+        "officer"
+      ],
+      [
+        "love",
+        "pounces",
         "a",
-        "a",
+        "brown",
         "dog",
         "is",
         "in",
-        "the"
+        "the",
+        "at"
       ],
       [
-        "bikinis",
-        "on",
+        "snowboarder",
+        "bathtub",
         "a",
         "a",
+        "brown",
         "dog",
-        "are",
-        "in",
-        "the"
-      ],
-      [
-        "bulldog",
-        "on",
-        "a",
-        "a",
-        "dogs",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "older",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "paperwork",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "is",
         "in",
         "the"
       ]
     ],
     "caption_scores": [
-      -11.290027618408203,
-      -9.834029197692871,
-      -12.362826347351074,
-      -8.282621383666992,
-      -8.657350540161133
+      -24.769508361816406,
+      -18.079021453857422,
+      -36.6307373046875,
+      -23.236011505126953,
+      -22.685165405273438
     ],
     "best_caption": [
-      "older",
-      "on",
+      "hand",
+      "plain",
       "a",
-      "a",
+      "black",
       "dog",
       "is",
       "in",
@@ -499,59 +514,61 @@
         "fence"
       ]
     ],
-    "best_caption_text": "older on a a dog is in the",
+    "best_caption_text": "hand plain a black dog is in the",
     "reference_text": "two brown dogs wrestle in the snow | two dogs playing in the snow | the dogs play on the snow | two brown dogs playfully fight in the snow | the dogs are in the snow in front of a fence"
   },
   {
     "image_index": 4,
     "generated_captions": [
       [
-        "orange",
-        "on",
+        "bagpipes",
+        "march",
+        "rowboat",
+        "kitten",
         "a",
-        "a",
-        "dog",
+        "woman",
         "is",
         "in",
-        "the"
-      ],
-      [
-        "good",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "butt",
-        "two",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "are",
-        "in",
-        "the"
-      ],
-      [
-        "rolls",
         "the",
-        "on",
+        "right"
+      ],
+      [
+        "sheet",
+        "shops",
+        "watching",
         "a",
-        "a",
+        "brown",
         "dog",
         "is",
         "in",
         "the"
       ],
       [
-        "posing",
-        "on",
+        "facial",
+        "lips",
         "a",
+        "black",
+        "dog",
+        "is",
+        "in",
+        "the"
+      ],
+      [
+        "kitten",
+        "superman",
+        "both",
         "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "the"
+      ],
+      [
+        "tightrope",
+        "security",
+        "a",
+        "brown",
         "dog",
         "is",
         "in",
@@ -559,17 +576,17 @@
       ]
     ],
     "caption_scores": [
-      -8.626020431518555,
-      -8.445069313049316,
-      -15.054523468017578,
-      -10.980772972106934,
-      -8.565922737121582
+      -45.481964111328125,
+      -25.112211227416992,
+      -18.576459884643555,
+      -26.860763549804688,
+      -17.320016860961914
     ],
     "best_caption": [
-      "good",
-      "on",
+      "tightrope",
+      "security",
       "a",
-      "a",
+      "brown",
       "dog",
       "is",
       "in",
@@ -625,612 +642,58 @@
         "fence"
       ]
     ],
-    "best_caption_text": "good on a a dog is in the",
+    "best_caption_text": "tightrope security a brown dog is in the",
     "reference_text": "two brown dogs wrestle in the snow | two dogs playing in the snow | the dogs play on the snow | two brown dogs playfully fight in the snow | the dogs are in the snow in front of a fence"
   },
   {
     "image_index": 5,
     "generated_captions": [
       [
-        "folding",
-        "scarf",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "climbs",
-        "are",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "clearing",
-        "tent",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "smaller",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "goggles",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ]
-    ],
-    "caption_scores": [
-      -18.263078689575195,
-      -15.5150146484375,
-      -21.90471839904785,
-      -10.598751068115234,
-      -10.795941352844238
-    ],
-    "best_caption": [
-      "smaller",
-      "on",
-      "a",
-      "a",
-      "dog",
-      "is",
-      "in",
-      "the"
-    ],
-    "reference_captions": [
-      [
-        "a",
-        "dog",
-        "swims",
-        "in",
-        "a",
-        "pool",
-        "near",
-        "a",
-        "person"
-      ],
-      [
-        "the",
-        "small",
-        "brown",
-        "and",
-        "white",
-        "dog",
-        "is",
-        "in",
-        "the",
-        "pool"
-      ],
-      [
-        "a",
-        "dog",
-        "in",
-        "a",
-        "swimming",
-        "pool",
-        "swims",
-        "toward",
-        "<unk>",
-        "<unk>",
-        "<unk>",
-        "see"
-      ],
-      [
-        "small",
-        "dog",
-        "is",
-        "paddling",
-        "through",
-        "the",
-        "water",
-        "in",
-        "a",
-        "pool"
-      ],
-      [
+        "cast",
+        "squirts",
         "a",
         "brown",
-        "and",
-        "white",
         "dog",
-        "swimming",
-        "towards",
-        "some",
-        "in",
-        "the",
-        "pool"
-      ]
-    ],
-    "best_caption_text": "smaller on a a dog is in the",
-    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
-  },
-  {
-    "image_index": 6,
-    "generated_captions": [
-      [
-        "bound",
-        "the",
-        "a",
-        "a",
-        "dog",
+        "is",
         "in",
         "a",
         "<unk>"
       ],
       [
-        "adults",
-        "on",
+        "very",
         "a",
-        "a",
+        "brown",
         "dog",
         "is",
         "in",
-        "the"
+        "a",
+        "<unk>"
       ],
       [
-        "jeans",
-        "leaps",
+        "black",
         "a",
-        "a",
+        "black",
         "dog",
         "is",
         "in",
-        "the"
+        "a",
+        "<unk>"
       ],
       [
-        "you",
+        "portrait",
+        "opening",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "on"
+      ],
+      [
         "with",
         "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "church",
-        "is",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ]
-    ],
-    "caption_scores": [
-      -13.390213012695312,
-      -10.227509498596191,
-      -17.678476333618164,
-      -9.076128005981445,
-      -11.667431831359863
-    ],
-    "best_caption": [
-      "you",
-      "with",
-      "a",
-      "a",
-      "dog",
-      "is",
-      "in",
-      "the"
-    ],
-    "reference_captions": [
-      [
-        "a",
-        "dog",
-        "swims",
-        "in",
-        "a",
-        "pool",
-        "near",
-        "a",
-        "person"
-      ],
-      [
-        "the",
-        "small",
         "brown",
-        "and",
-        "white",
-        "dog",
-        "is",
-        "in",
-        "the",
-        "pool"
-      ],
-      [
-        "a",
-        "dog",
-        "in",
-        "a",
-        "swimming",
-        "pool",
-        "swims",
-        "toward",
-        "<unk>",
-        "<unk>",
-        "<unk>",
-        "see"
-      ],
-      [
-        "small",
-        "dog",
-        "is",
-        "paddling",
-        "through",
-        "the",
-        "water",
-        "in",
-        "a",
-        "pool"
-      ],
-      [
-        "a",
-        "brown",
-        "and",
-        "white",
-        "dog",
-        "swimming",
-        "towards",
-        "some",
-        "in",
-        "the",
-        "pool"
-      ]
-    ],
-    "best_caption_text": "you with a a dog is in the",
-    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
-  },
-  {
-    "image_index": 7,
-    "generated_captions": [
-      [
-        "skinny",
-        "with",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "league",
-        "the",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "a",
-        "<unk>"
-      ],
-      [
-        "touch",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "a",
-        "<unk>"
-      ],
-      [
-        "crosses",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the",
-        "<unk>"
-      ],
-      [
-        "paddle",
-        "with",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ]
-    ],
-    "caption_scores": [
-      -8.943103790283203,
-      -10.614959716796875,
-      -10.829938888549805,
-      -11.154011726379395,
-      -9.501133918762207
-    ],
-    "best_caption": [
-      "skinny",
-      "with",
-      "a",
-      "a",
-      "dog",
-      "is",
-      "in",
-      "the"
-    ],
-    "reference_captions": [
-      [
-        "a",
-        "dog",
-        "swims",
-        "in",
-        "a",
-        "pool",
-        "near",
-        "a",
-        "person"
-      ],
-      [
-        "the",
-        "small",
-        "brown",
-        "and",
-        "white",
-        "dog",
-        "is",
-        "in",
-        "the",
-        "pool"
-      ],
-      [
-        "a",
-        "dog",
-        "in",
-        "a",
-        "swimming",
-        "pool",
-        "swims",
-        "toward",
-        "<unk>",
-        "<unk>",
-        "<unk>",
-        "see"
-      ],
-      [
-        "small",
-        "dog",
-        "is",
-        "paddling",
-        "through",
-        "the",
-        "water",
-        "in",
-        "a",
-        "pool"
-      ],
-      [
-        "a",
-        "brown",
-        "and",
-        "white",
-        "dog",
-        "swimming",
-        "towards",
-        "some",
-        "in",
-        "the",
-        "pool"
-      ]
-    ],
-    "best_caption_text": "skinny with a a dog is in the",
-    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
-  },
-  {
-    "image_index": 8,
-    "generated_captions": [
-      [
-        "bound",
-        "the",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "a",
-        "<unk>"
-      ],
-      [
-        "tutu",
-        "with",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "oar",
-        "with",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "a",
-        "<unk>"
-      ],
-      [
-        "line",
-        "the",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "a",
-        "<unk>"
-      ],
-      [
-        "fur",
-        "and",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ]
-    ],
-    "caption_scores": [
-      -9.966117858886719,
-      -9.130326271057129,
-      -10.990947723388672,
-      -10.821450233459473,
-      -10.338765144348145
-    ],
-    "best_caption": [
-      "tutu",
-      "with",
-      "a",
-      "a",
-      "dog",
-      "is",
-      "in",
-      "the"
-    ],
-    "reference_captions": [
-      [
-        "a",
-        "dog",
-        "swims",
-        "in",
-        "a",
-        "pool",
-        "near",
-        "a",
-        "person"
-      ],
-      [
-        "the",
-        "small",
-        "brown",
-        "and",
-        "white",
-        "dog",
-        "is",
-        "in",
-        "the",
-        "pool"
-      ],
-      [
-        "a",
-        "dog",
-        "in",
-        "a",
-        "swimming",
-        "pool",
-        "swims",
-        "toward",
-        "<unk>",
-        "<unk>",
-        "<unk>",
-        "see"
-      ],
-      [
-        "small",
-        "dog",
-        "is",
-        "paddling",
-        "through",
-        "the",
-        "water",
-        "in",
-        "a",
-        "pool"
-      ],
-      [
-        "a",
-        "brown",
-        "and",
-        "white",
-        "dog",
-        "swimming",
-        "towards",
-        "some",
-        "in",
-        "the",
-        "pool"
-      ]
-    ],
-    "best_caption_text": "tutu with a a dog is in the",
-    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
-  },
-  {
-    "image_index": 9,
-    "generated_captions": [
-      [
-        "five",
-        "the",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "a",
-        "the"
-      ],
-      [
-        "computer",
-        "rock",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "a",
-        "<unk>"
-      ],
-      [
-        "celebrate",
-        "on",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "tractor",
-        "a",
-        "a",
-        "dog",
-        "is",
-        "in",
-        "the"
-      ],
-      [
-        "biting",
-        "the",
-        "a",
-        "a",
         "dog",
         "is",
         "in",
@@ -1239,17 +702,16 @@
       ]
     ],
     "caption_scores": [
-      -13.243422508239746,
-      -17.99042320251465,
-      -10.357950210571289,
-      -10.7276611328125,
-      -10.161128044128418
+      -16.893287658691406,
+      -8.848857879638672,
+      -12.035470008850098,
+      -19.37164306640625,
+      -9.56723403930664
     ],
     "best_caption": [
-      "biting",
-      "the",
+      "very",
       "a",
-      "a",
+      "brown",
       "dog",
       "is",
       "in",
@@ -1320,7 +782,560 @@
         "pool"
       ]
     ],
-    "best_caption_text": "biting the a a dog is in a <unk>",
+    "best_caption_text": "very a brown dog is in a <unk>",
+    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
+  },
+  {
+    "image_index": 6,
+    "generated_captions": [
+      [
+        "pick",
+        "elaborate",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ],
+      [
+        "tosses",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ],
+      [
+        "camouflage",
+        "a",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ],
+      [
+        "retriever",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "on"
+      ],
+      [
+        "bathing",
+        "dog",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "<unk>"
+      ]
+    ],
+    "caption_scores": [
+      -16.921749114990234,
+      -9.077109336853027,
+      -10.920649528503418,
+      -11.951972961425781,
+      -14.907769203186035
+    ],
+    "best_caption": [
+      "tosses",
+      "a",
+      "brown",
+      "dog",
+      "is",
+      "in",
+      "a"
+    ],
+    "reference_captions": [
+      [
+        "a",
+        "dog",
+        "swims",
+        "in",
+        "a",
+        "pool",
+        "near",
+        "a",
+        "person"
+      ],
+      [
+        "the",
+        "small",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "is",
+        "in",
+        "the",
+        "pool"
+      ],
+      [
+        "a",
+        "dog",
+        "in",
+        "a",
+        "swimming",
+        "pool",
+        "swims",
+        "toward",
+        "<unk>",
+        "<unk>",
+        "<unk>",
+        "see"
+      ],
+      [
+        "small",
+        "dog",
+        "is",
+        "paddling",
+        "through",
+        "the",
+        "water",
+        "in",
+        "a",
+        "pool"
+      ],
+      [
+        "a",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "swimming",
+        "towards",
+        "some",
+        "in",
+        "the",
+        "pool"
+      ]
+    ],
+    "best_caption_text": "tosses a brown dog is in a",
+    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
+  },
+  {
+    "image_index": 7,
+    "generated_captions": [
+      [
+        "newspaper",
+        "houses",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "on"
+      ],
+      [
+        "practices",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "<unk>"
+      ],
+      [
+        "treat",
+        "is",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "<unk>"
+      ],
+      [
+        "pulls",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "nearby"
+      ],
+      [
+        "overhang",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "<unk>"
+      ]
+    ],
+    "caption_scores": [
+      -19.139127731323242,
+      -8.266803741455078,
+      -13.676548957824707,
+      -18.33685874938965,
+      -9.561568260192871
+    ],
+    "best_caption": [
+      "practices",
+      "a",
+      "brown",
+      "dog",
+      "is",
+      "in",
+      "a",
+      "<unk>"
+    ],
+    "reference_captions": [
+      [
+        "a",
+        "dog",
+        "swims",
+        "in",
+        "a",
+        "pool",
+        "near",
+        "a",
+        "person"
+      ],
+      [
+        "the",
+        "small",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "is",
+        "in",
+        "the",
+        "pool"
+      ],
+      [
+        "a",
+        "dog",
+        "in",
+        "a",
+        "swimming",
+        "pool",
+        "swims",
+        "toward",
+        "<unk>",
+        "<unk>",
+        "<unk>",
+        "see"
+      ],
+      [
+        "small",
+        "dog",
+        "is",
+        "paddling",
+        "through",
+        "the",
+        "water",
+        "in",
+        "a",
+        "pool"
+      ],
+      [
+        "a",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "swimming",
+        "towards",
+        "some",
+        "in",
+        "the",
+        "pool"
+      ]
+    ],
+    "best_caption_text": "practices a brown dog is in a <unk>",
+    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
+  },
+  {
+    "image_index": 8,
+    "generated_captions": [
+      [
+        "rail",
+        "dark",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "on"
+      ],
+      [
+        "tattoo",
+        "cliff",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ],
+      [
+        "twisting",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "<unk>"
+      ],
+      [
+        "posters",
+        "the",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "on"
+      ],
+      [
+        "who",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "shooting"
+      ]
+    ],
+    "caption_scores": [
+      -18.975624084472656,
+      -16.67868423461914,
+      -8.815033912658691,
+      -16.746917724609375,
+      -19.117412567138672
+    ],
+    "best_caption": [
+      "twisting",
+      "a",
+      "brown",
+      "dog",
+      "is",
+      "in",
+      "a",
+      "<unk>"
+    ],
+    "reference_captions": [
+      [
+        "a",
+        "dog",
+        "swims",
+        "in",
+        "a",
+        "pool",
+        "near",
+        "a",
+        "person"
+      ],
+      [
+        "the",
+        "small",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "is",
+        "in",
+        "the",
+        "pool"
+      ],
+      [
+        "a",
+        "dog",
+        "in",
+        "a",
+        "swimming",
+        "pool",
+        "swims",
+        "toward",
+        "<unk>",
+        "<unk>",
+        "<unk>",
+        "see"
+      ],
+      [
+        "small",
+        "dog",
+        "is",
+        "paddling",
+        "through",
+        "the",
+        "water",
+        "in",
+        "a",
+        "pool"
+      ],
+      [
+        "a",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "swimming",
+        "towards",
+        "some",
+        "in",
+        "the",
+        "pool"
+      ]
+    ],
+    "best_caption_text": "twisting a brown dog is in a <unk>",
+    "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
+  },
+  {
+    "image_index": 9,
+    "generated_captions": [
+      [
+        "submerged",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ],
+      [
+        "something",
+        "bottle",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a",
+        "<unk>"
+      ],
+      [
+        "sandals",
+        "twirling",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ],
+      [
+        "stadium",
+        "sandals",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ],
+      [
+        "uphill",
+        "a",
+        "brown",
+        "dog",
+        "is",
+        "in",
+        "a"
+      ]
+    ],
+    "caption_scores": [
+      -8.948806762695312,
+      -17.17896270751953,
+      -16.587129592895508,
+      -15.480911254882812,
+      -8.233521461486816
+    ],
+    "best_caption": [
+      "uphill",
+      "a",
+      "brown",
+      "dog",
+      "is",
+      "in",
+      "a"
+    ],
+    "reference_captions": [
+      [
+        "a",
+        "dog",
+        "swims",
+        "in",
+        "a",
+        "pool",
+        "near",
+        "a",
+        "person"
+      ],
+      [
+        "the",
+        "small",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "is",
+        "in",
+        "the",
+        "pool"
+      ],
+      [
+        "a",
+        "dog",
+        "in",
+        "a",
+        "swimming",
+        "pool",
+        "swims",
+        "toward",
+        "<unk>",
+        "<unk>",
+        "<unk>",
+        "see"
+      ],
+      [
+        "small",
+        "dog",
+        "is",
+        "paddling",
+        "through",
+        "the",
+        "water",
+        "in",
+        "a",
+        "pool"
+      ],
+      [
+        "a",
+        "brown",
+        "and",
+        "white",
+        "dog",
+        "swimming",
+        "towards",
+        "some",
+        "in",
+        "the",
+        "pool"
+      ]
+    ],
+    "best_caption_text": "uphill a brown dog is in a",
     "reference_text": "a dog swims in a pool near a person | the small brown and white dog is in the pool | a dog in a swimming pool swims toward <unk> <unk> <unk> see | small dog is paddling through the water in a pool | a brown and white dog swimming towards some in the pool"
   }
 ]
